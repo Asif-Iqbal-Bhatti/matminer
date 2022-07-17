@@ -35,7 +35,7 @@ class SingleFeaturizer(BaseFeaturizer):
 class SingleFeaturizerWithPrecheck(SingleFeaturizer):
     def precheck(self, x):
         # Return True if even and False if odd
-        return True if x % 2 == 0 else False
+        return x % 2 == 0
 
 
 class SingleFeaturizerMultiArgs(SingleFeaturizer):
@@ -46,7 +46,7 @@ class SingleFeaturizerMultiArgs(SingleFeaturizer):
 class SingleFeaturizerMultiArgsWithPrecheck(SingleFeaturizerMultiArgs):
     def precheck(self, *x):
         # If the sum is even, return True, else False
-        return True if (x[1] + x[0]) % 2 == 0 else False
+        return (x[1] + x[0]) % 2 == 0
 
 
 class MultipleFeatureFeaturizer(BaseFeaturizer):

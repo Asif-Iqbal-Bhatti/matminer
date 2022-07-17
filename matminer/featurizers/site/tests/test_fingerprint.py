@@ -251,7 +251,7 @@ class FingerprintTests(SiteFeaturizerTest):
             "Pauling scale": {"Al": 1.61, "Cs+": 0.79, "Cl-": 3.16},
         }
         cnnchemfp = CrystalNNFingerprint(op_types, chem_info=chem_info, distance_cutoffs=None, x_diff_weight=None)
-        labels = labels + ["mass local diff", "Pauling scale local diff"]
+        labels += ["mass local diff", "Pauling scale local diff"]
         for l1, l2 in zip(cnnchemfp.feature_labels(), labels):
             self.assertEqual(l1, l2)
 

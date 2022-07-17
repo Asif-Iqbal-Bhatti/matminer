@@ -70,7 +70,7 @@ class IntersticeDistribution(BaseFeaturizer):
         Returns:
             interstice_fps ([float]): Interstice distribution fingerprints.
         """
-        interstice_fps = list()
+        interstice_fps = []
 
         # Get the nearest neighbors using Voronoi tessellation
         n_w = VoronoiNN(cutoff=self.cutoff).get_voronoi_polyhedra(struct, idx).values()
@@ -113,10 +113,10 @@ class IntersticeDistribution(BaseFeaturizer):
         Returns:
             dist_interstice_list ([float]): Distance interstice list.
         """
-        dist_interstice_list = list()
-        for nn_dist, nn_r in zip(nn_dists, nn_rs):
-            dist_interstice_list.append(nn_dist / (center_r + nn_r) - 1)
-        return dist_interstice_list
+        return [
+            nn_dist / (center_r + nn_r) - 1
+            for nn_dist, nn_r in zip(nn_dists, nn_rs)
+        ]
 
     @staticmethod
     def analyze_area_interstice(nn_coords, nn_rs, convex_hull_simplices):
@@ -129,13 +129,13 @@ class IntersticeDistribution(BaseFeaturizer):
         Returns:
             area_interstice_list ([float]): Area interstice list.
         """
-        area_interstice_list = list()
+        area_interstice_list = []
 
         triplet_set = [(0, 1, 2), (1, 0, 2), (2, 0, 1)]
         for facet_indices in convex_hull_simplices:
             facet_coords = nn_coords[facet_indices]
             facet_rs = nn_rs[facet_indices]
-            triangle_angles = list()
+            triangle_angles = []
             for triplet in triplet_set:
                 a = facet_coords[triplet[1]] - facet_coords[triplet[0]]
                 b = facet_coords[triplet[2]] - facet_coords[triplet[0]]
@@ -143,9 +143,10 @@ class IntersticeDistribution(BaseFeaturizer):
                 triangle_angles.append(t_a)
 
             # calculate neighbors' packed area in the facet
-            packed_area = 0
-            for t_a, nn_r in zip(triangle_angles, facet_rs):
-                packed_area += t_a / 2 * pow(nn_r, 2)
+            packed_area = sum(
+                t_a / 2 * pow(nn_r, 2)
+                for t_a, nn_r in zip(triangle_angles, facet_rs)
+            )
 
             triangle_area = 0.5 * np.linalg.norm(
                 np.cross(
@@ -155,7 +156,7 @@ class IntersticeDistribution(BaseFeaturizer):
             )
 
             area_interstice = 1 - packed_area / triangle_area  # in fraction
-            area_interstice_list.append(area_interstice if area_interstice > 0 else 0)
+            area_interstice_list.append(max(area_interstice, 0))
         return area_interstice_list
 
     @staticmethod
@@ -172,13 +173,13 @@ class IntersticeDistribution(BaseFeaturizer):
         Returns:
             volume_interstice_list ([float]): Volume interstice list.
         """
-        volume_interstice_list = list()
+        volume_interstice_list = []
 
         triplet_set = [(0, 1, 2), (1, 0, 2), (2, 0, 1)]
         for facet_indices in convex_hull_simplices:
             facet_coords = nn_coords[facet_indices]
             facet_rs = nn_rs[facet_indices]
-            solid_angles = list()
+            solid_angles = []
             for triplet in triplet_set:
                 s_a = solid_angle(
                     facet_coords[triplet[0]],
@@ -193,9 +194,9 @@ class IntersticeDistribution(BaseFeaturizer):
                 solid_angles.append(s_a)
 
             # calculate neighbors' packed volume in the tetrahedron
-            packed_volume = 0
-            for s_a, nn_r in zip(solid_angles, facet_rs):
-                packed_volume += s_a / 3 * pow(nn_r, 3)
+            packed_volume = sum(
+                s_a / 3 * pow(nn_r, 3) for s_a, nn_r in zip(solid_angles, facet_rs)
+            )
 
             # add center atom's volume in the tetrahedron
             center_solid_angle = solid_angle(center_coords, facet_coords)
@@ -204,14 +205,29 @@ class IntersticeDistribution(BaseFeaturizer):
             volume = vol_tetra(center_coords, *facet_coords)
 
             volume_interstice = 1 - packed_volume / volume
-            volume_interstice_list.append(volume_interstice if volume_interstice > 0 else 0)
+            volume_interstice_list.append(max(volume_interstice, 0))
         return volume_interstice_list
 
     def feature_labels(self):
-        labels = list()
-        labels += ["Interstice_dist_%s" % stat for stat in self.stats] if "dist" in self.interstice_types else []
-        labels += ["Interstice_area_%s" % stat for stat in self.stats] if "area" in self.interstice_types else []
-        labels += ["Interstice_vol_%s" % stat for stat in self.stats] if "vol" in self.interstice_types else []
+        labels = []
+        labels += (
+            [f"Interstice_dist_{stat}" for stat in self.stats]
+            if "dist" in self.interstice_types
+            else []
+        )
+
+        labels += (
+            [f"Interstice_area_{stat}" for stat in self.stats]
+            if "area" in self.interstice_types
+            else []
+        )
+
+        labels += (
+            [f"Interstice_vol_{stat}" for stat in self.stats]
+            if "vol" in self.interstice_types
+            else []
+        )
+
         return labels
 
     def citations(self):
@@ -298,7 +314,7 @@ class CoordinationNumber(BaseFeaturizer):
             weights = [n["weight"] for n in nns]
             return [np.sum(weights) ** 2 / np.sum(np.power(weights, 2))]
         else:
-            raise ValueError("Weighting method not recognized: " + str(self.use_weights))
+            raise ValueError(f"Weighting method not recognized: {str(self.use_weights)}")
 
     def feature_labels(self):
         # TODO: Should names contain weighting scheme? -lw
@@ -306,29 +322,13 @@ class CoordinationNumber(BaseFeaturizer):
 
     def citations(self):
         citations = []
-        if self.nn.__class__.__name__ == "VoronoiNN":
-            citations.append(
-                "@article{voronoi_jreineangewmath_1908, title={"
-                "Nouvelles applications des param\\`{e}tres continus \\`{a} la "
-                "th'{e}orie des formes quadratiques. Sur quelques "
-                "propri'{e}t'{e}s des formes quadratiques positives"
-                ' parfaites}, journal={Journal f"ur die reine und angewandte '
-                "Mathematik}, number={133}, pages={97-178}, year={1908}}"
-            )
-            citations.append(
-                "@article{dirichlet_jreineangewmath_1850, title={"
-                '"{U}ber die Reduction der positiven quadratischen Formen '
-                "mit drei unbestimmten ganzen Zahlen}, journal={Journal "
-                'f"ur die reine und angewandte Mathematik}, number={40}, '
-                "pages={209-227}, doi={10.1515/crll.1850.40.209}, year={1850}}"
-            )
         if self.nn.__class__.__name__ == "JmolNN":
             citations.append(
                 "@misc{jmol, title = {Jmol: an open-source Java "
                 "viewer for chemical structures in 3D}, howpublished = {"
                 "\\url{http://www.jmol.org/}}}"
             )
-        if self.nn.__class__.__name__ == "MinimumOKeeffeNN":
+        elif self.nn.__class__.__name__ == "MinimumOKeeffeNN":
             citations.append(
                 "@article{okeeffe_jamchemsoc_1991, title={Atom "
                 "sizes and bond lengths in molecules and crystals}, journal="
@@ -336,7 +336,7 @@ class CoordinationNumber(BaseFeaturizer):
                 "O'Keeffe, M. and Brese, N. E.}, number={113}, pages={"
                 "3226-3229}, doi={doi:10.1021/ja00009a002}, year={1991}}"
             )
-        if self.nn.__class__.__name__ == "MinimumVIRENN":
+        elif self.nn.__class__.__name__ == "MinimumVIRENN":
             citations.append(
                 "@article{shannon_actacryst_1976, title={"
                 "Revised effective ionic radii and systematic studies of "
@@ -345,6 +345,23 @@ class CoordinationNumber(BaseFeaturizer):
                 "number={A32}, pages={751-767}, doi={"
                 "10.1107/S0567739476001551}, year={1976}"
             )
+        elif self.nn.__class__.__name__ == "VoronoiNN":
+            citations.extend(
+                (
+                    "@article{voronoi_jreineangewmath_1908, title={"
+                    "Nouvelles applications des param\\`{e}tres continus \\`{a} la "
+                    "th'{e}orie des formes quadratiques. Sur quelques "
+                    "propri'{e}t'{e}s des formes quadratiques positives"
+                    ' parfaites}, journal={Journal f"ur die reine und angewandte '
+                    "Mathematik}, number={133}, pages={97-178}, year={1908}}",
+                    "@article{dirichlet_jreineangewmath_1850, title={"
+                    '"{U}ber die Reduction der positiven quadratischen Formen '
+                    "mit drei unbestimmten ganzen Zahlen}, journal={Journal "
+                    'f"ur die reine und angewandte Mathematik}, number={40}, '
+                    "pages={209-227}, doi={10.1515/crll.1850.40.209}, year={1850}}",
+                )
+            )
+
         if self.nn.__class__.__name__ in [
             "MinimumDistanceNN",
             "MinimumOKeeffeNN",

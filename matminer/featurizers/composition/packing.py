@@ -266,8 +266,10 @@ class AtomicPackingEfficiency(BaseFeaturizer):
 
                 # Get those which are within the threshold of 0
                 #  and add their composition to the list of OK elements
-                for hit in s_elems[np.abs(ape) < self.threshold]:
-                    eff_clusters.append([center_elem] + hit.tolist())
+                eff_clusters.extend(
+                    [center_elem] + hit.tolist()
+                    for hit in s_elems[np.abs(ape) < self.threshold]
+                )
 
         # Compute the composition vectors for all of the efficient clusters
         comps = np.zeros((len(eff_clusters), self._n_elems))

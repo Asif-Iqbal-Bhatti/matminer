@@ -518,11 +518,9 @@ class CompositionToOxidComposition(ConversionFeaturizer):
                 comp = comp.element_composition
             else:
                 raise ValueError(
-                    "Composition {} has a mix of species with "
-                    "and without oxidation states. Please enable "
-                    "coercion to all oxidation states with "
-                    "coerce_mixed.".format(comp)
+                    f"Composition {comp} has a mix of species with and without oxidation states. Please enable coercion to all oxidation states with coerce_mixed."
                 )
+
         try:
             comp = comp.add_charges_from_oxi_state_guesses(**self.oxi_guess_params)
         except ValueError as e:
@@ -650,8 +648,8 @@ class PymatgenFunctionApplicator(ConversionFeaturizer):
         super().__init__(target_col_id, overwrite_data)
 
         self.func = func
-        self.func_args = func_args if func_args else []
-        self.func_kwargs = func_kwargs if func_kwargs else {}
+        self.func_args = func_args or []
+        self.func_kwargs = func_kwargs or {}
 
         # n_jobs must be set to 1 to avoid pickling errors
         self.set_n_jobs(1)

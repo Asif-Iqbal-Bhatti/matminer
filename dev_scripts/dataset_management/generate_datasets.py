@@ -128,16 +128,17 @@ def generate_mp(max_nsites=None, properties=None, write_to_csv=False,
         properties = list(properties)
 
     # Pick columns to drop structure data from
-    drop_cols = []
-    for col_name in ["structure", "initial_structure"]:
-        if col_name in properties:
-            drop_cols.append(col_name)
+    drop_cols = [
+        col_name
+        for col_name in ["structure", "initial_structure"]
+        if col_name in properties
+    ]
 
     mpdr = MPDataRetrieval()
     if max_nsites is not None:
-        sites_list = [i for i in range(1, max_nsites + 1)]
+        sites_list = list(range(1, max_nsites + 1))
     else:
-        sites_list = [i for i in range(1, 101)] + [{"$gt": 100}]
+        sites_list = list(range(1, 101)) + [{"$gt": 100}]
 
     df = pd.DataFrame()
     for site_specifier in tqdm(sites_list, desc="Querying Materials Project"):
@@ -228,8 +229,7 @@ def generate_elastic_tensor(write_to_csv=False, write_to_compressed_json=False,
     mpdr = MPDataRetrieval()
 
     # Iterate over each site number to ensure returned object isn't too large
-    for site_num in tqdm([i for i in range(1, 101)] + [{"$gt": 100}],
-                         desc="Querying MP"):
+    for site_num in tqdm(list(range(1, 101)) + [{"$gt": 100}], desc="Querying MP"):
         criteria["nsites"] = site_num
         # While loop to repeat queries if server request fails
         while True:

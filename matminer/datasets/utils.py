@@ -84,12 +84,11 @@ def _validate_dataset(data_path, url=None, file_hash=None, download_if_missing=T
         _fetch_external_dataset(url, data_path)
 
     # Check to see if file hash matches the expected value, if hash is provided
-    if file_hash is not None:
-        if file_hash != _get_file_sha256_hash(data_path):
-            raise UserWarning(
-                "Error, hash of downloaded file does not match that "
-                "included in metadata, the data may be corrupt or altered"
-            )
+    if file_hash is not None and file_hash != _get_file_sha256_hash(data_path):
+        raise UserWarning(
+            "Error, hash of downloaded file does not match that "
+            "included in metadata, the data may be corrupt or altered"
+        )
 
 
 def _fetch_external_dataset(url, file_path):
@@ -142,10 +141,10 @@ def _get_file_sha256_hash(file_path):
     chunk_size = 8192
     with open(file_path, "rb") as f:
         while True:
-            buffer = f.read(chunk_size)
-            if not buffer:
+            if buffer := f.read(chunk_size):
+                sha256hash.update(buffer)
+            else:
                 break
-            sha256hash.update(buffer)
     return sha256hash.hexdigest()
 
 

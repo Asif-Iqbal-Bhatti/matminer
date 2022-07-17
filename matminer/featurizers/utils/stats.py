@@ -56,7 +56,7 @@ class PropertyStats:
         Returns:
             minimum value
         """
-        return min(data_lst) if not np.any(np.isnan(data_lst)) else float("nan")
+        return float("nan") if np.any(np.isnan(data_lst)) else min(data_lst)
 
     @staticmethod
     def maximum(data_lst, weights=None):
@@ -68,7 +68,7 @@ class PropertyStats:
         Returns:
             maximum value
         """
-        return max(data_lst) if not np.any(np.isnan(data_lst)) else float("nan")
+        return float("nan") if np.any(np.isnan(data_lst)) else max(data_lst)
 
     @staticmethod
     def range(data_lst, weights=None):
@@ -80,7 +80,11 @@ class PropertyStats:
         Returns:
             range
         """
-        return (max(data_lst) - min(data_lst)) if not np.any(np.isnan(data_lst)) else float("nan")
+        return (
+            float("nan")
+            if np.any(np.isnan(data_lst))
+            else max(data_lst) - min(data_lst)
+        )
 
     @staticmethod
     def mean(data_lst, weights=None):
@@ -140,10 +144,9 @@ class PropertyStats:
 
         if weights is None:
             return np.std(data_lst)
-        else:
-            beta = np.sum(weights) / (np.sum(weights) ** 2 - np.sum(np.power(weights, 2)))
-            dev = np.power(np.subtract(data_lst, PropertyStats.mean(data_lst, weights=weights)), 2)
-            return np.sqrt(beta * np.dot(dev, weights))
+        beta = np.sum(weights) / (np.sum(weights) ** 2 - np.sum(np.power(weights, 2)))
+        dev = np.power(np.subtract(data_lst, PropertyStats.mean(data_lst, weights=weights)), 2)
+        return np.sqrt(beta * np.dot(dev, weights))
 
     @staticmethod
     def skewness(data_lst, weights=None):
@@ -162,18 +165,15 @@ class PropertyStats:
 
         if weights is None:
             return scipy.stats.skew(data_lst)
-        else:
-            # Compute the mean
-            mean = PropertyStats.mean(data_lst, weights)
+        # Compute the mean
+        mean = PropertyStats.mean(data_lst, weights)
 
-            # Compute the second and 3rd moments of the difference from the mean
-            total_weight = np.sum(weights)
-            diff = np.subtract(data_lst, mean)
-            u3 = np.dot(weights, np.power(diff, 3)) / total_weight
-            u2 = np.dot(weights, np.power(diff, 2)) / total_weight
-            if np.isclose(u3, 0):
-                return 0
-            return u3 / u2**1.5
+        # Compute the second and 3rd moments of the difference from the mean
+        total_weight = np.sum(weights)
+        diff = np.subtract(data_lst, mean)
+        u3 = np.dot(weights, np.power(diff, 3)) / total_weight
+        u2 = np.dot(weights, np.power(diff, 2)) / total_weight
+        return 0 if np.isclose(u3, 0) else u3 / u2**1.5
 
     @staticmethod
     def kurtosis(data_lst, weights=None):
@@ -192,18 +192,15 @@ class PropertyStats:
 
         if weights is None:
             return scipy.stats.kurtosis(data_lst, fisher=False)
-        else:
-            # Compute the mean
-            mean = PropertyStats.mean(data_lst, weights)
+        # Compute the mean
+        mean = PropertyStats.mean(data_lst, weights)
 
-            # Compute the second and 4th moments of the difference from the mean
-            total_weight = np.sum(weights)
-            diff_sq = np.power(np.subtract(data_lst, mean), 2)
-            u4 = np.dot(weights, np.power(diff_sq, 2))
-            u2 = np.dot(weights, diff_sq)
-            if np.isclose(u4, 0):
-                return 0
-            return u4 / u2**2 * total_weight
+        # Compute the second and 4th moments of the difference from the mean
+        total_weight = np.sum(weights)
+        diff_sq = np.power(np.subtract(data_lst, mean), 2)
+        u4 = np.dot(weights, np.power(diff_sq, 2))
+        u2 = np.dot(weights, diff_sq)
+        return 0 if np.isclose(u4, 0) else u4 / u2**2 * total_weight
 
     @staticmethod
     def geom_std_dev(data_lst, weights=None):
@@ -243,14 +240,13 @@ class PropertyStats:
         """
         if weights is None:
             return scipy.stats.mode(data_lst).mode[0]
-        else:
-            # Find the entry(s) with the largest weight
-            data_lst = np.array(data_lst)
-            weights = np.array(weights)
-            most_freq = np.isclose(weights, weights.max())
+        # Find the entry(s) with the largest weight
+        data_lst = np.array(data_lst)
+        weights = np.array(weights)
+        most_freq = np.isclose(weights, weights.max())
 
-            # Return the minimum of the most-frequent entries
-            return data_lst[most_freq].min()
+        # Return the minimum of the most-frequent entries
+        return data_lst[most_freq].min()
 
     @staticmethod
     def holder_mean(data_lst, weights=None, power=1):
@@ -278,13 +274,9 @@ class PropertyStats:
             alpha = sum(weights)
 
             if power == -1:
-                denom = 0
-                for idx, x in enumerate(data_lst):
-                    denom += weights[idx] / x
-
+                denom = sum(weights[idx] / x for idx, x in enumerate(data_lst))
                 return sum(weights) / denom
 
-            # If power=0, return geometric mean
             elif power == 0:
                 return np.product(np.power(data_lst, np.true_divide(weights, np.sum(weights))))
             else:

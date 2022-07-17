@@ -69,10 +69,7 @@ class BranchPointEnergy(BaseFeaturizer):
             raise ValueError("BranchPointEnergy works only with uniform (not " "line mode) band structures!")
         vbm = bs.get_vbm()["energy"]
         cbm = bs.get_cbm()["energy"]
-        shift = 0.0
-        if target_gap:
-            # for now, equal shift to VBM / CBM
-            shift = (target_gap - (cbm - vbm)) / 2.0
+        shift = (target_gap - (cbm - vbm)) / 2.0 if target_gap else 0.0
         total_sum_energies = 0
         num_points = 0
         if weights is not None:
@@ -95,18 +92,19 @@ class BranchPointEnergy(BaseFeaturizer):
                 vb_energies.sort(reverse=True)
                 cb_energies.sort()
                 total_sum_energies += (
-                    (sum(vb_energies[0 : self.n_vb]) / self.n_vb + sum(cb_energies[0 : self.n_cb]) / self.n_cb)
+                    (
+                        sum(vb_energies[: self.n_vb]) / self.n_vb
+                        + sum(cb_energies[: self.n_cb]) / self.n_cb
+                    )
                     * kpt_wts[kpt_idx]
-                    / 2.0
-                )
+                ) / 2.0
+
 
                 num_points += kpt_wts[kpt_idx]
 
         bpe = total_sum_energies / num_points
 
-        if not self.calculate_band_edges:
-            return [bpe]
-        return [bpe, vbm - shift, cbm + shift]
+        return [bpe, vbm - shift, cbm + shift] if self.calculate_band_edges else [bpe]
 
     def feature_labels(self):
         """
@@ -262,8 +260,11 @@ class BandFeaturizer(BaseFeaturizer):
         if self.kpoints:
             for tp in ["p", "n"]:
                 for k in self.kpoints:
-                    for ib in range(self.nbands):
-                        labels.append(f"{tp}_{k[0]};{k[1]};{k[2]}_en{ib + 1}")
+                    labels.extend(
+                        f"{tp}_{k[0]};{k[1]};{k[2]}_en{ib + 1}"
+                        for ib in range(self.nbands)
+                    )
+
         return labels
 
     @staticmethod

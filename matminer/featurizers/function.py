@@ -257,8 +257,10 @@ def generate_expressions_combinations(expressions, combo_depth=2, combo_function
     # Get all sets of expressions
     for exp_set in itertools.product(*all_arrays):
         # Get all permutations of each set
-        for exp_perm in itertools.permutations(exp_set):
-            combo_exps.append(combo_function(exp_perm))
+        combo_exps.extend(
+            combo_function(exp_perm)
+            for exp_perm in itertools.permutations(exp_set)
+        )
 
     # Filter for unique combinations, also remove identity
     unique_exps = list(set(combo_exps) - {parse_expr("x0")})

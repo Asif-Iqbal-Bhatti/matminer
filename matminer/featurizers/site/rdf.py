@@ -41,10 +41,10 @@ class GaussianSymmFunc(BaseFeaturizer):
     """
 
     def __init__(self, etas_g2=None, etas_g4=None, zetas_g4=None, gammas_g4=None, cutoff=6.5):
-        self.etas_g2 = etas_g2 if etas_g2 else [0.05, 4.0, 20.0, 80.0]
-        self.etas_g4 = etas_g4 if etas_g4 else [0.005]
-        self.zetas_g4 = zetas_g4 if zetas_g4 else [1.0, 4.0]
-        self.gammas_g4 = gammas_g4 if gammas_g4 else [+1.0, -1.0]
+        self.etas_g2 = etas_g2 or [0.05, 4.0, 20.0, 80.0]
+        self.etas_g4 = etas_g4 or [0.005]
+        self.zetas_g4 = zetas_g4 or [1.0, 4.0]
+        self.gammas_g4 = gammas_g4 or [+1.0, -1.0]
         self.cutoff = cutoff
 
     @staticmethod
@@ -136,8 +136,6 @@ class GaussianSymmFunc(BaseFeaturizer):
         Returns:
             (list of floats): Gaussian symmetry function features.
         """
-        gaussian_funcs = []
-
         # Get the neighbors within the cutoff
         neighbors = struct.get_neighbors(struct[idx], self.cutoff)
 
@@ -147,9 +145,9 @@ class GaussianSymmFunc(BaseFeaturizer):
         # Get the distances for later use
         neigh_dists = np.array([neigh[1] for neigh in neighbors])
 
-        # Compute all G2
-        for eta_g2 in self.etas_g2:
-            gaussian_funcs.append(self.g2(eta_g2, neigh_dists, self.cutoff))
+        gaussian_funcs = [
+            self.g2(eta_g2, neigh_dists, self.cutoff) for eta_g2 in self.etas_g2
+        ]
 
         # Compute all G4s
         gaussian_funcs.extend(
@@ -240,7 +238,10 @@ class GeneralizedRadialDistributionFunction(BaseFeaturizer):
         self.cutoff = cutoff
 
         if mode not in ["GRDF", "pairwise_GRDF"]:
-            raise AttributeError("{} is not a valid GRDF mode. try " '"GRDF" or "pairwise_GRDF"'.format(mode))
+            raise AttributeError(
+                f'{mode} is not a valid GRDF mode. try "GRDF" or "pairwise_GRDF"'
+            )
+
         else:
             self.mode = mode
 
@@ -285,22 +286,25 @@ class GeneralizedRadialDistributionFunction(BaseFeaturizer):
         sites = struct._sites
         central_site = sites[idx]
         neighbors_lst = struct.get_neighbors(central_site, self.cutoff, include_index=True)
-        sites = range(0, len(sites))
+        sites = range(len(sites))
 
-        # Generate lists of pairwise distances according to run mode
-        if self.mode == "GRDF":
-            # Make a single distance collection
-            distance_collection = [[neighbor[1] for neighbor in neighbors_lst]]
-        else:
-            # Make pairwise distance collections for pairwise GRDF
-            distance_collection = [
-                [neighbor[1] for neighbor in neighbors_lst if neighbor[2] == site_idx] for site_idx in sites
+        distance_collection = (
+            [[neighbor[1] for neighbor in neighbors_lst]]
+            if self.mode == "GRDF"
+            else [
+                [
+                    neighbor[1]
+                    for neighbor in neighbors_lst
+                    if neighbor[2] == site_idx
+                ]
+                for site_idx in sites
             ]
+        )
 
-        # compute bin counts for each list of pairwise distances
-        bin_counts = []
-        for values in distance_collection:
-            bin_counts.append([sum(bin(values)) for bin in self.bins])
+        bin_counts = [
+            [sum(bin(values)) for bin in self.bins]
+            for values in distance_collection
+        ]
 
         # Compute "volume" of each bin to normalize GRDFs
         volumes = [bin.volume(self.cutoff) for bin in self.bins]
@@ -315,11 +319,10 @@ class GeneralizedRadialDistributionFunction(BaseFeaturizer):
     def feature_labels(self):
         if self.mode == "GRDF":
             return [bin.name() for bin in self.bins]
+        if self.fit_labels:
+            return self.fit_labels
         else:
-            if self.fit_labels:
-                return self.fit_labels
-            else:
-                raise AttributeError("the fit method must be called first, to " "determine the correct feature labels.")
+            raise AttributeError("the fit method must be called first, to " "determine the correct feature labels.")
 
     @staticmethod
     def from_preset(preset, width=1.0, spacing=1.0, cutoff=10, mode="GRDF"):
@@ -338,13 +341,9 @@ class GeneralizedRadialDistributionFunction(BaseFeaturizer):
 
         # Generate bin functions
         if preset == "gaussian":
-            bins = []
-            for center in np.arange(0.0, cutoff, spacing):
-                bins.append(Gaussian(width, center))
+            bins = [Gaussian(width, center) for center in np.arange(0.0, cutoff, spacing)]
         elif preset == "histogram":
-            bins = []
-            for start in np.arange(0, cutoff, spacing):
-                bins.append(Histogram(start, width))
+            bins = [Histogram(start, width) for start in np.arange(0, cutoff, spacing)]
         else:
             raise ValueError("Not a valid preset condition.")
         return GeneralizedRadialDistributionFunction(bins, cutoff=cutoff, mode=mode)
@@ -454,9 +453,10 @@ class AngularFourierSeries(BaseFeaturizer):
             neighbor_pairs[:, 1].astype(float),
             neighbor_pairs[:, 2].astype(float),
         )
-        features = [sum(combo[0](dist1) * combo[1](dist2) * cos_angles) for combo in bin_combos]
-
-        return features
+        return [
+            sum(combo[0](dist1) * combo[1](dist2) * cos_angles)
+            for combo in bin_combos
+        ]
 
     def feature_labels(self):
         bin_combos = list(itertools.product(self.bins, repeat=2))
@@ -478,13 +478,9 @@ class AngularFourierSeries(BaseFeaturizer):
 
         # Generate bin functions
         if preset == "gaussian":
-            bins = []
-            for center in np.arange(0.0, cutoff, spacing):
-                bins.append(Gaussian(width, center))
+            bins = [Gaussian(width, center) for center in np.arange(0.0, cutoff, spacing)]
         elif preset == "histogram":
-            bins = []
-            for start in np.arange(0, cutoff, spacing):
-                bins.append(Histogram(start, width))
+            bins = [Histogram(start, width) for start in np.arange(0, cutoff, spacing)]
         else:
             raise ValueError("Not a valid preset condition.")
         return AngularFourierSeries(bins, cutoff=cutoff)

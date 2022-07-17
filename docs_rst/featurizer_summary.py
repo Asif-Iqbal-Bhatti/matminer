@@ -56,8 +56,7 @@ def generate_tables():
 
     allowable_types = ["base", "composition", "site", "structure", "bandstructure", "dos", "function", "conversions"]
     for sc in scnames:
-        scdict = {"name": sc.__name__}
-        scdict["doc"] = sc.__doc__.splitlines()[1].lstrip()
+        scdict = {"name": sc.__name__, "doc": sc.__doc__.splitlines()[1].lstrip()}
         scdict["module"] = sc.__module__
 
         module_tree = sc.__module__.split(".")
@@ -93,11 +92,7 @@ def generate_tables():
         if not dftable["subtype"].isna().any():
             for i, subtype in enumerate(np.unique(dftable["subtype"])):
                 dfsubtable = dftable[df["subtype"] == subtype]
-                if i == 0:
-                    big_header = ftype
-                else:
-                    big_header = None
-
+                big_header = ftype if i == 0 else None
                 generate_table(dfsubtable, big_header=big_header, little_header=subtype)
         else:
             generate_table(dftable, big_header=ftype)
@@ -138,11 +133,11 @@ def generate_table(dftable, big_header=None, little_header=None):
     print("   :header-rows: 1\n")
     print("   * - Name")
     print("     - Description")
-    for i, n in enumerate(dftable['codename']):
-        # url = url_base + dftable["module"].iloc[0] + "." + \
-        #       dftable["name"].iloc[i] + ">`_"
-        url = ""
+    # url = url_base + dftable["module"].iloc[0] + "." + \
+    #       dftable["name"].iloc[i] + ">`_"
+    url = ""
 
+    for i, n in enumerate(dftable['codename']):
         print(f"   * - {n}")
         description = dftable["doc"].iloc[i]
         print(f"     - {description} {url}    ")

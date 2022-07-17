@@ -72,7 +72,7 @@ class JarvisCFID(BaseFeaturizer):
 
         labels = []
         if self.use_chem:
-            labels += list("jml_" + s for s in self.el_chem_json["Al"].keys())
+            labels += [f"jml_{s}" for s in self.el_chem_json["Al"].keys()]
         if self.use_cell:
             labels += ["jml_pack_frac", "jml_vpa", "jml_density", "jml_log_vpa"]
         if self.use_chg:
@@ -137,8 +137,7 @@ class JarvisCFID(BaseFeaturizer):
             if self.use_rdf:
                 descriptors.append(rdf)
             if self.use_adf:
-                descriptors.append(adf_1)
-                descriptors.append(adf_2)
+                descriptors.extend((adf_1, adf_2))
             if self.use_ddf:
                 descriptors.append(ddf)
             if self.use_nn:

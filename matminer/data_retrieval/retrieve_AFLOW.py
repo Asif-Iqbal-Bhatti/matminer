@@ -174,7 +174,7 @@ class AFLOWDataRetrieval(BaseDataRetrieval):
         # collects request responses
         records = {}
         for page in range(1, page_limit + 1):
-            records.update(query.responses[page])
+            records |= query.responses[page]
         return DataFrame.from_dict(data=records, orient="index")
 
 

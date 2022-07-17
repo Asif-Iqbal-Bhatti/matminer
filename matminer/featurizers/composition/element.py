@@ -36,10 +36,7 @@ class ElementFraction(BaseFeaturizer):
         return vector
 
     def feature_labels(self):
-        labels = []
-        for i in range(1, 104):
-            labels.append(Element.from_Z(i).symbol)
-        return labels
+        return [Element.from_Z(i).symbol for i in range(1, 104)]
 
     def implementors(self):
         return ["Ashwin Aggarwal", "Logan Ward"]
@@ -94,28 +91,22 @@ class TMetalFraction(BaseFeaturizer):
 
         el_amt = comp.get_el_amt_dict()
 
-        frac_magn_atoms = 0
-        for el in el_amt:
-            if el in self.magn_elem:
-                frac_magn_atoms += el_amt[el]
-
+        frac_magn_atoms = sum(el_amt[el] for el in el_amt if el in self.magn_elem)
         frac_magn_atoms /= sum(el_amt.values())
 
         return [frac_magn_atoms]
 
     def feature_labels(self):
-        labels = ["transition metal fraction"]
-        return labels
+        return ["transition metal fraction"]
 
     def citations(self):
-        citation = [
+        return [
             "@article{deml_ohayre_wolverton_stevanovic_2016, title={Predicting density "
             "functional theory total energies and enthalpies of formation of metal-nonmetal "
             "compounds by linear regression}, volume={47}, DOI={10.1002/chin.201644254}, "
             "number={44}, journal={ChemInform}, author={Deml, Ann M. and Ohayre, Ryan and "
             "Wolverton, Chris and Stevanovic, Vladan}, year={2016}}"
         ]
-        return citation
 
     def implementors(self):
         return ["Jiming Chen, Logan Ward"]
@@ -152,27 +143,21 @@ class Stoichiometry(BaseFeaturizer):
         n_atoms_per_unit = comp.num_atoms / comp.get_integer_formula_and_factor()[1]
 
         if self.p_list is None:
-            stoich_attr = [n_atoms_per_unit]  # return num atoms if no norms specified
-        else:
-            p_norms = [0] * len(self.p_list)
-            n_atoms = sum(el_amt.values())
+            return [n_atoms_per_unit]
+        p_norms = [0] * len(self.p_list)
+        n_atoms = sum(el_amt.values())
 
-            for i in range(len(self.p_list)):
-                if self.p_list[i] < 0:
-                    raise ValueError("p-norm not defined for p < 0")
-                if self.p_list[i] == 0:
-                    p_norms[i] = len(el_amt.values())
-                else:
-                    for j in el_amt:
-                        p_norms[i] += (el_amt[j] / n_atoms) ** self.p_list[i]
-                    p_norms[i] = p_norms[i] ** (1.0 / self.p_list[i])
-
-            if self.num_atoms:
-                stoich_attr = [n_atoms_per_unit] + p_norms
+        for i in range(len(self.p_list)):
+            if self.p_list[i] < 0:
+                raise ValueError("p-norm not defined for p < 0")
+            if self.p_list[i] == 0:
+                p_norms[i] = len(el_amt.values())
             else:
-                stoich_attr = p_norms
+                for j in el_amt:
+                    p_norms[i] += (el_amt[j] / n_atoms) ** self.p_list[i]
+                p_norms[i] = p_norms[i] ** (1.0 / self.p_list[i])
 
-        return stoich_attr
+        return [n_atoms_per_unit] + p_norms if self.num_atoms else p_norms
 
     def feature_labels(self):
         labels = []
@@ -180,20 +165,17 @@ class Stoichiometry(BaseFeaturizer):
             labels.append("num atoms")
 
         if self.p_list is not None:
-            for p in self.p_list:
-                labels.append("%d-norm" % p)
-
+            labels.extend("%d-norm" % p for p in self.p_list)
         return labels
 
     def citations(self):
-        citation = [
+        return [
             "@article{ward_agrawal_choudary_wolverton_2016, title={A general-purpose "
             "machine learning framework for predicting properties of inorganic materials}, "
             "volume={2}, DOI={10.1038/npjcompumats.2017.28}, number={1}, journal={npj "
             "Computational Materials}, author={Ward, Logan and Agrawal, Ankit and Choudhary, "
             "Alok and Wolverton, Christopher}, year={2016}}"
         ]
-        return citation
 
     def implementors(self):
         return ["Jiming Chen", "Logan Ward"]

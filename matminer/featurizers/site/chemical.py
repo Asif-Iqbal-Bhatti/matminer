@@ -100,7 +100,7 @@ class ChemicalSRO(BaseFeaturizer):
             self
         """
         structs = np.atleast_2d(X)[:, 0]
-        if not all([isinstance(struct, Structure) for struct in structs]):
+        if not all(isinstance(struct, Structure) for struct in structs):
             raise TypeError("This fit requires an array-like input of Pymatgen " "Structures and sites!")
 
         self.el_amt_dict_ = {}
@@ -152,29 +152,13 @@ class ChemicalSRO(BaseFeaturizer):
 
     def citations(self):
         citations = []
-        if self.nn.__class__.__name__ == "VoronoiNN":
-            citations.append(
-                "@article{voronoi_jreineangewmath_1908, title={"
-                "Nouvelles applications des param\\`{e}tres continus \\`{a} la "
-                "th'{e}orie des formes quadratiques. Sur quelques "
-                "propri'{e}t'{e}s des formes quadratiques positives"
-                ' parfaites}, journal={Journal f"ur die reine und angewandte '
-                "Mathematik}, number={133}, pages={97-178}, year={1908}}"
-            )
-            citations.append(
-                "@article{dirichlet_jreineangewmath_1850, title={"
-                '"{U}ber die Reduction der positiven quadratischen Formen '
-                "mit drei unbestimmten ganzen Zahlen}, journal={Journal "
-                'f"ur die reine und angewandte Mathematik}, number={40}, '
-                "pages={209-227}, doi={10.1515/crll.1850.40.209}, year={1850}}"
-            )
         if self.nn.__class__.__name__ == "JmolNN":
             citations.append(
                 "@misc{jmol, title = {Jmol: an open-source Java "
                 "viewer for chemical structures in 3D}, howpublished = {"
                 "\\url{http://www.jmol.org/}}}"
             )
-        if self.nn.__class__.__name__ == "MinimumOKeeffeNN":
+        elif self.nn.__class__.__name__ == "MinimumOKeeffeNN":
             citations.append(
                 "@article{okeeffe_jamchemsoc_1991, title={Atom "
                 "sizes and bond lengths in molecules and crystals}, journal="
@@ -182,7 +166,7 @@ class ChemicalSRO(BaseFeaturizer):
                 "O'Keeffe, M. and Brese, N. E.}, number={113}, pages={"
                 "3226-3229}, doi={doi:10.1021/ja00009a002}, year={1991}}"
             )
-        if self.nn.__class__.__name__ == "MinimumVIRENN":
+        elif self.nn.__class__.__name__ == "MinimumVIRENN":
             citations.append(
                 "@article{shannon_actacryst_1976, title={"
                 "Revised effective ionic radii and systematic studies of "
@@ -191,6 +175,23 @@ class ChemicalSRO(BaseFeaturizer):
                 "number={A32}, pages={751-767}, doi={"
                 "10.1107/S0567739476001551}, year={1976}"
             )
+        elif self.nn.__class__.__name__ == "VoronoiNN":
+            citations.extend(
+                (
+                    "@article{voronoi_jreineangewmath_1908, title={"
+                    "Nouvelles applications des param\\`{e}tres continus \\`{a} la "
+                    "th'{e}orie des formes quadratiques. Sur quelques "
+                    "propri'{e}t'{e}s des formes quadratiques positives"
+                    ' parfaites}, journal={Journal f"ur die reine und angewandte '
+                    "Mathematik}, number={133}, pages={97-178}, year={1908}}",
+                    "@article{dirichlet_jreineangewmath_1850, title={"
+                    '"{U}ber die Reduction der positiven quadratischen Formen '
+                    "mit drei unbestimmten ganzen Zahlen}, journal={Journal "
+                    'f"ur die reine und angewandte Mathematik}, number={40}, '
+                    "pages={209-227}, doi={10.1515/crll.1850.40.209}, year={1850}}",
+                )
+            )
+
         if self.nn.__class__.__name__ in [
             "MinimumDistanceNN",
             "MinimumOKeeffeNN",
@@ -364,7 +365,7 @@ class LocalPropertyDifference(BaseFeaturizer):
                 ],
             )
         else:
-            raise ValueError("Unrecognized preset: " + preset)
+            raise ValueError(f"Unrecognized preset: {preset}")
 
     def featurize(self, strc, idx):
         # Get the targeted site
@@ -392,9 +393,9 @@ class LocalPropertyDifference(BaseFeaturizer):
 
     def feature_labels(self):
         if self.signed is False:
-            return ["local difference in " + p for p in self.properties]
+            return [f"local difference in {p}" for p in self.properties]
         else:
-            return ["local signed difference in " + p for p in self.properties]
+            return [f"local signed difference in {p}" for p in self.properties]
 
     def citations(self):
         return [
@@ -453,9 +454,10 @@ class SiteElementalProperty(BaseFeaturizer):
 
         # Get the properties
         elem = site.specie if isinstance(site.specie, Element) else site.specie.element
-        props = [self.data_source.get_elemental_property(elem, p) for p in self.properties]
-
-        return props
+        return [
+            self.data_source.get_elemental_property(elem, p)
+            for p in self.properties
+        ]
 
     def feature_labels(self):
         return [f"site {p}" for p in self.properties]
@@ -476,45 +478,44 @@ class SiteElementalProperty(BaseFeaturizer):
             SiteElementalProperty initialized with desired settings
         """
 
-        if preset == "seko-prb-2017":
-            output = SiteElementalProperty(
-                data_source=MagpieData(),
-                properties=[
-                    "Number",
-                    "AtomicWeight",
-                    "Row",
-                    "Column",
-                    "FirstIonizationEnergy",
-                    "SecondIonizationEnergy",
-                    "ElectronAffinity",
-                    "Electronegativity",
-                    "AllenElectronegativity",
-                    "VdWRadius",
-                    "CovalentRadius",
-                    "AtomicRadius",
-                    "ZungerPP-r_s",
-                    "ZungerPP-r_p",
-                    "MeltingT",
-                    "BoilingT",
-                    "Density",
-                    "MolarVolume",
-                    "HeatFusion",
-                    "HeatVaporization",
-                    "LogThermalConductivity",
-                    "HeatCapacityMass",
-                ],
-            )
-            output._preset_citations.append(
-                "@article{Seko2017,"
-                "author = {Seko, Atsuto and Hayashi, Hiroyuki and "
-                "Nakayama, Keita and Takahashi, Akira and Tanaka, Isao},"
-                "doi = {10.1103/PhysRevB.95.144110},"
-                "journal = {Physical Review B}, number = {14},"
-                "pages = {144110},"
-                "title = {{Representation of compounds for machine-learning prediction of physical properties}},"
-                "url = {http://link.aps.org/doi/10.1103/PhysRevB.95.144110},"
-                "volume = {95}, year = {2017}}"
-            )
-            return output
-        else:
+        if preset != "seko-prb-2017":
             raise ValueError(f"Unrecognized preset: {preset}")
+        output = SiteElementalProperty(
+            data_source=MagpieData(),
+            properties=[
+                "Number",
+                "AtomicWeight",
+                "Row",
+                "Column",
+                "FirstIonizationEnergy",
+                "SecondIonizationEnergy",
+                "ElectronAffinity",
+                "Electronegativity",
+                "AllenElectronegativity",
+                "VdWRadius",
+                "CovalentRadius",
+                "AtomicRadius",
+                "ZungerPP-r_s",
+                "ZungerPP-r_p",
+                "MeltingT",
+                "BoilingT",
+                "Density",
+                "MolarVolume",
+                "HeatFusion",
+                "HeatVaporization",
+                "LogThermalConductivity",
+                "HeatCapacityMass",
+            ],
+        )
+        output._preset_citations.append(
+            "@article{Seko2017,"
+            "author = {Seko, Atsuto and Hayashi, Hiroyuki and "
+            "Nakayama, Keita and Takahashi, Akira and Tanaka, Isao},"
+            "doi = {10.1103/PhysRevB.95.144110},"
+            "journal = {Physical Review B}, number = {14},"
+            "pages = {144110},"
+            "title = {{Representation of compounds for machine-learning prediction of physical properties}},"
+            "url = {http://link.aps.org/doi/10.1103/PhysRevB.95.144110},"
+            "volume = {95}, year = {2017}}"
+        )
+        return output

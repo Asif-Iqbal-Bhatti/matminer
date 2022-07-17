@@ -99,7 +99,7 @@ class BondFractions(BaseFeaturizer):
         if " " not in token:
             raise ValueError("A space must be present in the token.")
 
-        if any([str.isalnum(i) for i in token]):
+        if any(str.isalnum(i) for i in token):
             raise ValueError("The token cannot have any alphanumeric " "characters.")
 
         token_els = token.split(" ")
@@ -158,7 +158,7 @@ class BondFractions(BaseFeaturizer):
 
         X = X.values if isinstance(X, pd.Series) else X
 
-        if not all([isinstance(x, Structure) for x in X]):
+        if not all(isinstance(x, Structure) for x in X):
             raise ValueError("Each structure must be a pymatgen Structure " "object.")
 
         sanitized = self._sanitize_bonds(self.enumerate_all_bonds(X))
@@ -167,7 +167,7 @@ class BondFractions(BaseFeaturizer):
             self.fitted_bonds_ = sanitized
         else:
             self.fitted_bonds_ = [b for b in sanitized if b in self.allowed_bonds]
-            if len(self.fitted_bonds_) == 0:
+            if not self.fitted_bonds_:
                 warnings.warn(
                     "The intersection between the allowed bonds "
                     "and the fitted bonds is zero. There's no bonds"
@@ -239,11 +239,7 @@ class BondFractions(BaseFeaturizer):
         # if we find a bond in allowed_bonds not in bond_types, mark as bbv
         for b in self.fitted_bonds_:
             if b not in bond_types:
-                if self.bbv is None:
-                    bonds[b] = float("nan")
-                else:
-                    bonds[b] = self.bbv
-
+                bonds[b] = float("nan") if self.bbv is None else self.bbv
         for i, _ in enumerate(s.sites):
             nearest = self.nn.get_nn(s, i)
             origin = s.sites[i].specie
@@ -336,10 +332,7 @@ class BondFractions(BaseFeaturizer):
             bonds[i] = self.token.join(species)
         bonds = list(OrderedDict.fromkeys(bonds))
 
-        if single:
-            return bonds[0]
-        else:
-            return tuple(sorted(bonds))
+        return bonds[0] if single else tuple(sorted(bonds))
 
     def _species_from_bondstr(self, bondstr):
         """
@@ -406,7 +399,7 @@ class BondFractions(BaseFeaturizer):
 
                 nearest = []
                 d_min = None
-                for abss in abonds_species.keys():
+                for abss in abonds_species:
 
                     # The distance between bonds is euclidean. To get a good
                     # measure of the coordinate between mendeleev numbers for
@@ -422,19 +415,12 @@ class BondFractions(BaseFeaturizer):
                     d1 = u_mends[1] - l_mends[1]
 
                     d = (d0**2.0 + d1**2.0) ** 0.5
-                    if not d_min:
-                        d_min = d
-                        nearest = [abss]
-                    elif d < d_min:
-                        # A new best approximation has been found
+                    if not d_min or d < d_min:
                         d_min = d
                         nearest = [abss]
                     elif d == d_min:
                         # An equivalent approximation has been found
                         nearest += [abss]
-                    else:
-                        pass
-
                 # Divide bond fraction equally among all equiv. approximate bonds
                 bond_frac = local_bonds[lb] / len(nearest)
                 for n in nearest:
@@ -576,33 +562,24 @@ class BagofBonds(BaseFeaturizer):
                     el0 = el0.element
                 if isinstance(el1, Specie):
                     el1 = el1.element
-                if i == j:
-                    bonds[i, j] = (el0,)
-                else:
-                    bonds[i, j] = tuple(sorted((el0, el1)))
-
+                bonds[i, j] = (el0, ) if i == j else tuple(sorted((el0, el1)))
         if return_baglens:
             bags = {b: 0 for b in np.unique(bonds)}
         else:
             cm = self.coulomb_matrix.featurize(s)[0]
             bags = {b: [] for b in np.unique(bonds)}
 
-        for i in range(nsites):
-            for j in range(nsites):
-                bond = bonds[i, j]
-                if return_baglens:
-                    # Only return length of bag
-                    bags[bond] = bags[bond] + 1
-                else:
-                    # Calculate bond "strength"
-                    cmval = cm[i, j]
-                    bags[bond].append(cmval)
+        for i, j in itertools.product(range(nsites), range(nsites)):
+            bond = bonds[i, j]
+            if return_baglens:
+                # Only return length of bag
+                bags[bond] = bags[bond] + 1
+            else:
+                # Calculate bond "strength"
+                cmval = cm[i, j]
+                bags[bond].append(cmval)
 
-        if return_baglens:
-            return bags
-        else:
-            # We must sort the magnitude of bonds in each bag
-            return {bond: sorted(bags[bond]) for bond in bags}
+        return bags if return_baglens else {bond: sorted(bags[bond]) for bond in bags}
 
     def featurize(self, s):
         """
@@ -624,17 +601,15 @@ class BagofBonds(BaseFeaturizer):
 
         for bond in unpadded_bob:
             if bond not in list(self.bag_lens.keys()):
-                raise ValueError("{} is not in the fitted " "bonds/sites!".format(bond))
+                raise ValueError(f"{bond} is not in the fitted bonds/sites!")
             baglen_s = len(unpadded_bob[bond])
             baglen_fit = self.bag_lens[bond]
 
             if baglen_s > baglen_fit:
                 raise ValueError(
-                    "The bond {} has more entries than was "
-                    "fitted for (i.e., there are more {} bonds"
-                    " in structure {} ({}) than the fitted set"
-                    " allows ({}).".format(bond, bond, s, baglen_s, baglen_fit)
+                    f"The bond {bond} has more entries than was fitted for (i.e., there are more {bond} bonds in structure {s} ({baglen_s}) than the fitted set allows ({baglen_fit})."
                 )
+
             elif baglen_s < baglen_fit:
                 padded_bob[bond] = unpadded_bob[bond] + [0.0] * (baglen_fit - baglen_s)
             else:
@@ -649,7 +624,7 @@ class BagofBonds(BaseFeaturizer):
         labels = []
         for bag in self.ordered_bonds:
             if len(bag) == 1:
-                basename = str(bag[0]) + " site #"
+                basename = f"{str(bag[0])} site #"
             else:
                 basename = str(bag[0]) + self.token + str(bag[1]) + " bond #"
             bls = [basename + str(i) for i in range(self.bag_lens[bag])]
@@ -744,7 +719,7 @@ class GlobalInstabilityIndex(BaseFeaturizer):
         elems = [str(x.element) for x in struct.composition.elements]
 
         # If compound is not ionically bonded, it is going to fail
-        if not any([e in anions for e in elems]):
+        if all(e not in anions for e in elems):
             return False
         valences = [site.species.elements[0].oxi_state for site in struct]
 
@@ -788,16 +763,15 @@ class GlobalInstabilityIndex(BaseFeaturizer):
                     "GII extremely large. Table parameters may " "not be suitable or structure may be unusual."
                 )
 
+        elif self.disordered_pymatgen:
+            gii = self.calc_gii_pymatgen(struct, scale_factor=0.965)
+            if gii > 0.6:
+                warnings.warn(
+                    "GII extremely large. Pymatgen method may not be " "suitable or structure may be unusual."
+                )
+            return [gii]
         else:
-            if self.disordered_pymatgen:
-                gii = self.calc_gii_pymatgen(struct, scale_factor=0.965)
-                if gii > 0.6:
-                    warnings.warn(
-                        "GII extremely large. Pymatgen method may not be " "suitable or structure may be unusual."
-                    )
-                return [gii]
-            else:
-                raise ValueError("Structure must be ordered for table lookup method.")
+            raise ValueError("Structure must be ordered for table lookup method.")
 
         return [gii]
 
@@ -809,8 +783,7 @@ class GlobalInstabilityIndex(BaseFeaturizer):
         equiv_atoms = sym_data["equivalent_atoms"]
         wyckoffs = sym_data["wyckoffs"]
         sym_struct = SymmetrizedStructure(s, sg, equiv_atoms, wyckoffs)
-        equivs = sym_struct.find_equivalent_sites(site)
-        return equivs
+        return sym_struct.find_equivalent_sites(site)
 
     def calc_bv_sum(self, site_val, site_el, neighbor_list):
         """Computes bond valence sum for site.
@@ -846,10 +819,9 @@ class GlobalInstabilityIndex(BaseFeaturizer):
                     bvs -= self.compute_bv(params, dist)
             except Exception:
                 raise ValueError(
-                    "BV parameters for {} with valence {} and {} {} not "
-                    "found in table"
-                    "".format(site_el, site_val, neighbor_el, neighbor_val)
+                    f"BV parameters for {site_el} with valence {site_val} and {neighbor_el} {neighbor_val} not found in table"
                 )
+
         return bvs
 
     def calc_gii_iucr(self, s):
@@ -889,8 +861,9 @@ class GlobalInstabilityIndex(BaseFeaturizer):
             bvs = self.calc_bv_sum(site_val, site_el, neighbor_list)
 
             site_val_sums[site] = bvs - site_val
-        gii = np.linalg.norm(list(site_val_sums.values())) / np.sqrt(len(site_val_sums))
-        return gii
+        return np.linalg.norm(list(site_val_sums.values())) / np.sqrt(
+            len(site_val_sums)
+        )
 
     # Cache bond valence parameters
     @lru_cache(maxsize=512)
@@ -923,8 +896,7 @@ class GlobalInstabilityIndex(BaseFeaturizer):
         Returns:
             bv: Float, bond valence
         """
-        bv = np.exp((params["Ro"] - dist) / params["B"])
-        return bv
+        return np.exp((params["Ro"] - dist) / params["B"])
 
     def calc_gii_pymatgen(self, struct, scale_factor=0.965):
         """Calculates global instability index using Pymatgen's bond valence sum
@@ -941,15 +913,13 @@ class GlobalInstabilityIndex(BaseFeaturizer):
                 nn = struct.get_neighbors(site, r=cutoff)
                 bvs = bond_valence.calculate_bv_sum(site, nn, scale_factor=scale_factor)
                 deviations.append(bvs - site.species.elements[0].oxi_state)
-            gii = np.linalg.norm(deviations) / np.sqrt(len(deviations))
         else:
             for site in struct:
                 nn = struct.get_neighbors(site, r=cutoff)
                 bvs = bond_valence.calculate_bv_sum_unordered(site, nn, scale_factor=scale_factor)
                 min_diff = min(bvs - spec.oxi_state for spec in site.species.elements)
                 deviations.append(min_diff)
-            gii = np.linalg.norm(deviations) / np.sqrt(len(deviations))
-        return gii
+        return np.linalg.norm(deviations) / np.sqrt(len(deviations))
 
     def feature_labels(self):
         return ["global instability index"]
@@ -1199,41 +1169,36 @@ class MinimumRelativeDistances(BaseFeaturizer):
             else:
                 neighbor_site_species[i] = tuple(neigh_species_equiv)
 
-        if self.flatten:
-            features = []
-
-            for i in range(self._max_sites):
-                site_features = []
-                if i <= n_sites - 1:
-                    if self.include_distances:
-                        site_features.append(dists_relative_min[i])
-                    if self.include_species:
-                        site_features.append(parent_site_species[i])
-                        site_features.append(neighbor_site_species[i])
-                else:
-                    site_features = [np.nan] * (int(self.include_distances) + 2 * int(self.include_species))
-                features += site_features
-            return features
-
-        else:
+        if not self.flatten:
             return [dists_relative_min]
+        features = []
+
+        for i in range(self._max_sites):
+            site_features = []
+            if i <= n_sites - 1:
+                if self.include_distances:
+                    site_features.append(dists_relative_min[i])
+                if self.include_species:
+                    site_features.extend((parent_site_species[i], neighbor_site_species[i]))
+            else:
+                site_features = [np.nan] * (int(self.include_distances) + 2 * int(self.include_species))
+            features += site_features
+        return features
 
     def feature_labels(self):
         self._check_fitted()
 
-        if self.flatten:
-            labels = []
-            for i in range(self._max_sites):
-                site_labels = []
-                if self.include_distances:
-                    site_labels.append(f"site #{i} min. rel. dist.")
-                if self.include_species:
-                    site_labels.append(f"site #{i} specie")
-                    site_labels.append(f"site #{i} neighbor specie(s)")
-                labels += site_labels
-            return labels
-        else:
+        if not self.flatten:
             return ["minimum relative distance of each site"]
+        labels = []
+        for i in range(self._max_sites):
+            site_labels = []
+            if self.include_distances:
+                site_labels.append(f"site #{i} min. rel. dist.")
+            if self.include_species:
+                site_labels.extend((f"site #{i} specie", f"site #{i} neighbor specie(s)"))
+            labels += site_labels
+        return labels
 
     def citations(self):
         return [

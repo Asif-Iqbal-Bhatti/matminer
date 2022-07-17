@@ -85,22 +85,18 @@ class CoulombMatrix(BaseFeaturizer):
         for i in range(s.num_sites):
             for j in range(s.num_sites):
                 if i == j:
-                    if self.diag_elems:
-                        m[i, j] = 0.5 * atomic_numbers[i] ** 2.4
-                    else:
-                        m[i, j] = 0
+                    m[i, j] = 0.5 * atomic_numbers[i] ** 2.4 if self.diag_elems else 0
                 else:
                     d = s.get_distance(i, j) * ANG_TO_BOHR
                     m[i, j] = atomic_numbers[i] * atomic_numbers[j] / d
         cm = np.array(m)
 
-        if self.flatten:
-            eigs, _ = np.linalg.eig(cm)
-            zeros = np.zeros((self._max_eigs,))
-            zeros[: len(eigs)] = eigs
-            return zeros
-        else:
+        if not self.flatten:
             return [cm]
+        eigs, _ = np.linalg.eig(cm)
+        zeros = np.zeros((self._max_eigs,))
+        zeros[: len(eigs)] = eigs
+        return zeros
 
     def feature_labels(self):
         self._check_fitted()
@@ -200,13 +196,12 @@ class SineCoulombMatrix(BaseFeaturizer):
                     sin_mat[i][j] = atomic_numbers[i] * atomic_numbers[j] / trig_dist
                 else:
                     sin_mat[i][j] = sin_mat[j][i]
-        if self.flatten:
-            eigs, _ = np.linalg.eig(sin_mat)
-            zeros = np.zeros((self._max_eigs,))
-            zeros[: len(eigs)] = eigs
-            return zeros
-        else:
+        if not self.flatten:
             return [sin_mat]
+        eigs, _ = np.linalg.eig(sin_mat)
+        zeros = np.zeros((self._max_eigs,))
+        zeros[: len(eigs)] = eigs
+        return zeros
 
     def feature_labels(self):
         self._check_fitted()
@@ -283,10 +278,7 @@ class OrbitalFieldMatrix(BaseFeaturizer):
                     actinides as period 7. Default False as in the original paper.
         """
         my_ohvs = {}
-        if period_tag:
-            self.size = 39
-        else:
-            self.size = 32
+        self.size = 39 if period_tag else 32
         for Z in range(1, 95):
             el = Element.from_Z(Z)
             my_ohvs[Z] = self.get_ohv(el, period_tag)
@@ -318,9 +310,9 @@ class OrbitalFieldMatrix(BaseFeaturizer):
             elif el_struct[-1 - shell_num][0] < max_n - 1 and el_struct[-1 - shell_num][1] != "f":
                 shell_num += 1
                 continue
-            elif el_struct[-1 - shell_num][0] < max_n and (
-                el_struct[-1 - shell_num][1] != "d" and el_struct[-1 - shell_num][1] != "f"
-            ):
+            elif el_struct[-1 - shell_num][0] < max_n and el_struct[-1 - shell_num][
+                1
+            ] not in ["d", "f"]:
                 shell_num += 1
                 continue
             curr_shell = el_struct[-1 - shell_num]
@@ -390,19 +382,21 @@ class OrbitalFieldMatrix(BaseFeaturizer):
                     ofms for struct
                 counts: number of identical sites for each ofm
         """
-        ofms = []
         vnn = pmg_le.VoronoiNN(allow_pathological=True)
         if symm:
             symm_struct = SpacegroupAnalyzer(struct).get_symmetrized_structure()
             indices = [lst[0] for lst in symm_struct.equivalent_indices]
             counts = [len(lst) for lst in symm_struct.equivalent_indices]
         else:
-            indices = [i for i in range(len(struct.sites))]
-        for index in indices:
-            ofms.append(self.get_single_ofm(struct.sites[index], vnn.get_nn_info(struct, index)))
-        if symm:
-            return ofms, counts
-        return ofms
+            indices = list(range(len(struct.sites)))
+        ofms = [
+            self.get_single_ofm(
+                struct.sites[index], vnn.get_nn_info(struct, index)
+            )
+            for index in indices
+        ]
+
+        return (ofms, counts) if symm else ofms
 
     def get_mean_ofm(self, ofms, counts):
         """
@@ -436,31 +430,26 @@ class OrbitalFieldMatrix(BaseFeaturizer):
         s *= [3, 3, 3]
         ofms, counts = self.get_atom_ofms(s, True)
         mean_ofm = self.get_mean_ofm(ofms, counts)
-        if self.flatten:
-            return mean_ofm.A.flatten()
-        else:
-            return [mean_ofm.A]
+        return mean_ofm.A.flatten() if self.flatten else [mean_ofm.A]
 
     def feature_labels(self):
-        if self.flatten:
-            slabels = [f"s^{i}" for i in range(1, 3)]
-            plabels = [f"p^{i}" for i in range(1, 7)]
-            dlabels = [f"d^{i}" for i in range(1, 11)]
-            flabels = [f"f^{i}" for i in range(1, 15)]
-            labelset_1D = slabels + plabels + dlabels + flabels
-
-            # account for period tags
-            if self.size == 39:
-                period_labels = [f"period {i}" for i in range(1, 8)]
-                labelset_1D += period_labels
-
-            labelset_2D = []
-            for l1 in labelset_1D:
-                for l2 in labelset_1D:
-                    labelset_2D.append("OFM: " + l1 + " - " + l2)
-            return labelset_2D
-        else:
+        if not self.flatten:
             return ["orbital field matrix"]
+        slabels = [f"s^{i}" for i in range(1, 3)]
+        plabels = [f"p^{i}" for i in range(1, 7)]
+        dlabels = [f"d^{i}" for i in range(1, 11)]
+        flabels = [f"f^{i}" for i in range(1, 15)]
+        labelset_1D = slabels + plabels + dlabels + flabels
+
+        # account for period tags
+        if self.size == 39:
+            period_labels = [f"period {i}" for i in range(1, 8)]
+            labelset_1D += period_labels
+
+        labelset_2D = []
+        for l1 in labelset_1D:
+            labelset_2D.extend(f"OFM: {l1} - {l2}" for l2 in labelset_1D)
+        return labelset_2D
 
     def citations(self):
         return [

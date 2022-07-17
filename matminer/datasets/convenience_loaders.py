@@ -91,9 +91,7 @@ def load_flla(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("flla", data_home, download_if_missing)
-
-    return df
+    return load_dataset("flla", data_home, download_if_missing)
 
 
 def load_castelli_perovskites(data_home=None, download_if_missing=True):
@@ -108,9 +106,7 @@ def load_castelli_perovskites(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("castelli_perovskites", data_home, download_if_missing)
-
-    return df
+    return load_dataset("castelli_perovskites", data_home, download_if_missing)
 
 
 def load_boltztrap_mp(data_home=None, download_if_missing=True):
@@ -125,9 +121,7 @@ def load_boltztrap_mp(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("boltztrap_mp", data_home, download_if_missing)
-
-    return df
+    return load_dataset("boltztrap_mp", data_home, download_if_missing)
 
 
 def load_phonon_dielectric_mp(data_home=None, download_if_missing=True):
@@ -142,9 +136,7 @@ def load_phonon_dielectric_mp(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("phonon_dielectric_mp", data_home, download_if_missing)
-
-    return df
+    return load_dataset("phonon_dielectric_mp", data_home, download_if_missing)
 
 
 def load_glass_ternary_landolt(processing="all", unique_composition=True, data_home=None, download_if_missing=True):
@@ -216,9 +208,9 @@ def load_double_perovskites_gap_lumo(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("double_perovskites_gap_lumo", data_home, download_if_missing)
-
-    return df
+    return load_dataset(
+        "double_perovskites_gap_lumo", data_home, download_if_missing
+    )
 
 
 def load_glass_ternary_hipt(system="all", data_home=None, download_if_missing=True):
@@ -244,7 +236,10 @@ def load_glass_ternary_hipt(system="all", data_home=None, download_if_missing=Tr
 
         for item in system:
             if item not in {"CoFeZr", "CoTiZr", "CoVZr", "FeTiNb"}:
-                raise AttributeError("some of the system list {} are not " "in this dataset".format(system))
+                raise AttributeError(
+                    f"some of the system list {system} are not in this dataset"
+                )
+
         df = df[df["system"].isin(system)]
 
     return df
@@ -287,12 +282,13 @@ def load_mp(include_structures=False, data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    if include_structures:
-        df = load_dataset("mp_all_20181018", data_home, download_if_missing)
-    else:
-        df = load_dataset("mp_nostruct_20181018", data_home, download_if_missing)
-
-    return df
+    return (
+        load_dataset("mp_all_20181018", data_home, download_if_missing)
+        if include_structures
+        else load_dataset(
+            "mp_nostruct_20181018", data_home, download_if_missing
+        )
+    )
 
 
 def load_wolverton_oxides(data_home=None, download_if_missing=True):
@@ -307,9 +303,7 @@ def load_wolverton_oxides(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("wolverton_oxides", data_home, download_if_missing)
-
-    return df
+    return load_dataset("wolverton_oxides", data_home, download_if_missing)
 
 
 def load_heusler_magnetic(data_home=None, download_if_missing=True):
@@ -324,9 +318,7 @@ def load_heusler_magnetic(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("heusler_magnetic", data_home, download_if_missing)
-
-    return df
+    return load_dataset("heusler_magnetic", data_home, download_if_missing)
 
 
 def load_steel_strength(data_home=None, download_if_missing=True):
@@ -341,9 +333,7 @@ def load_steel_strength(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("steel_strength", data_home, download_if_missing)
-
-    return df
+    return load_dataset("steel_strength", data_home, download_if_missing)
 
 
 def load_jarvis_ml_dft_training(drop_nan_columns=None, data_home=None, download_if_missing=True):
@@ -442,9 +432,7 @@ def load_glass_binary(version="v2", data_home=None, download_if_missing=True):
     if version != "v1":
         dataset_identifier = "_".join([dataset_identifier, version])
 
-    df = load_dataset(dataset_identifier, data_home, download_if_missing)
-
-    return df
+    return load_dataset(dataset_identifier, data_home, download_if_missing)
 
 
 def load_m2ax(data_home=None, download_if_missing=True):
@@ -459,9 +447,7 @@ def load_m2ax(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("m2ax", data_home, download_if_missing)
-
-    return df
+    return load_dataset("m2ax", data_home, download_if_missing)
 
 
 def load_expt_gap(data_home=None, download_if_missing=True):
@@ -476,9 +462,7 @@ def load_expt_gap(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("expt_gap", data_home, download_if_missing)
-
-    return df
+    return load_dataset("expt_gap", data_home, download_if_missing)
 
 
 def load_expt_formation_enthalpy(data_home=None, download_if_missing=True):
@@ -493,9 +477,7 @@ def load_expt_formation_enthalpy(data_home=None, download_if_missing=True):
 
     Returns: (pd.DataFrame)
     """
-    df = load_dataset("expt_formation_enthalpy", data_home, download_if_missing)
-
-    return df
+    return load_dataset("expt_formation_enthalpy", data_home, download_if_missing)
 
 
 def load_brgoch_superhard_training(subset="all", drop_suspect=False, data_home=None, download_if_missing=True):
@@ -520,7 +502,7 @@ def load_brgoch_superhard_training(subset="all", drop_suspect=False, data_home=N
     Returns: (pd.DataFrame)
     """
     if subset not in {"all", "brgoch_features", "basic_descriptors"}:
-        raise ValueError("Error: dataset subset identifier {} " "not recognized".format(subset))
+        raise ValueError(f"Error: dataset subset identifier {subset} not recognized")
 
     df = load_dataset("brgoch_superhard_training", data_home, download_if_missing)
 
@@ -528,7 +510,7 @@ def load_brgoch_superhard_training(subset="all", drop_suspect=False, data_home=N
         df = df[~df["suspect_value"]]
 
     if subset in {"all", "brgoch_features"}:
-        feats_expanded = pd.DataFrame([feat_dict for feat_dict in df["brgoch_feats"]])
+        feats_expanded = pd.DataFrame(list(df["brgoch_feats"]))
 
         for column in feats_expanded.columns:
             df[column] = feats_expanded[column]

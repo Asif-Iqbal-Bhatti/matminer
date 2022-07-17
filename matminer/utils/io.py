@@ -116,10 +116,7 @@ def load_dataframe_from_json(filename, pbar=True, decode=True):
             (bool)
 
         """
-        if isinstance(o, dict) and "@class" in o:
-            return True
-        else:
-            return False
+        return isinstance(o, dict) and "@class" in o
 
     def pbar_hook(obj):
         """

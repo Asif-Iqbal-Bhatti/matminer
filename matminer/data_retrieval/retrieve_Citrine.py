@@ -37,7 +37,7 @@ def get_value(dict_item):
     if "value" in dict_item:
         return dict_item["value"]
     elif "minimum" in dict_item and "maximum" in dict_item:
-        return "Minimum = {}, Maximum = {}".format(dict_item["minimum"], dict_item["maximum"])
+        return f'Minimum = {dict_item["minimum"]}, Maximum = {dict_item["maximum"]}'
 
 
 class CitrineDataRetrieval(BaseDataRetrieval):
@@ -115,9 +115,7 @@ class CitrineDataRetrieval(BaseDataRetrieval):
             jsons = self.get_data(prop=requested_prop, **criteria)
             non_prop_df = pd.DataFrame()  # df w/o measurement column
             prop_df = pd.DataFrame()  # df containing only measurement column
-            counter = 0  # variable to keep count of sample hit and set indexes
-            for hit in tqdm(jsons):
-                counter += 1
+            for counter, hit in enumerate(tqdm(jsons), start=1):
                 if "system" in hit.keys():  # Check if 'system' key exists, else skip
                     system_value = hit["system"]
                     system_normdf = json_normalize(system_value)
@@ -135,7 +133,7 @@ class CitrineDataRetrieval(BaseDataRetrieval):
                         for i in reversed(range(len(all_prop_names))):
                             item = all_prop_names[i]
                             if item in counts and counts[item]:
-                                all_prop_names[i] += "_" + str(counts[item])
+                                all_prop_names[i] += f"_{str(counts[item])}"
                                 counts[item] -= 1
 
                         # add each property, and its associated fields, as a new column
@@ -172,18 +170,17 @@ class CitrineDataRetrieval(BaseDataRetrieval):
                 optcomcols = list(set(optcomcols) & set(df_prop.columns))
             all_fields += list(df_prop.columns.values)
             if not secondary_fields:
-                outcols = []
-                for p in df_prop.columns.values:
-                    if not requested_prop or requested_prop in p:
-                        outcols.append(p)
+                outcols = [
+                    p
+                    for p in df_prop.columns.values
+                    if not requested_prop or requested_prop in p
+                ]
+
                 df_prop = df_prop[outcols + ["uid"] + common_fields]
             if prop_counter == 0:
                 df = df_prop
             else:
-                if "uid" in df and "uid" in df_prop:
-                    uid = ["uid"]
-                else:
-                    uid = []
+                uid = ["uid"] if "uid" in df and "uid" in df_prop else []
                 try:
                     if len(uid + common_fields) > 0:
                         df = df.merge(df_prop, on=uid + common_fields, how="outer")
@@ -191,8 +188,9 @@ class CitrineDataRetrieval(BaseDataRetrieval):
                         df = df.join(df_prop, how="outer")
                 except (TypeError, KeyError):
                     raise TypeError(
-                        "Use scalar/string fields for common_fields" "common_fields among: {}".format(optcomcols)
+                        f"Use scalar/string fields for common_fieldscommon_fields among: {optcomcols}"
                     )
+
         uninformative_columns = ["category", "uid"]
         optcomcols = [c for c in optcomcols if c not in uninformative_columns]
         for col in uninformative_columns:
@@ -240,7 +238,7 @@ class CitrineDataRetrieval(BaseDataRetrieval):
         """
 
         json_data = []
-        start = from_record if from_record else 0
+        start = from_record or 0
         per_page = 100
         refresh_time = 3  # seconds to wait between search calls
 

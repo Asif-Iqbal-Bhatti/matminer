@@ -29,7 +29,7 @@ class DataRetrievalTest(DatasetTest):
         # Actual dataset is subset of passed dataset name
         dataset_name = sorted(self.dataset_dict.keys())[0]
         with self.assertRaises(ValueError):
-            load_dataset("a" + dataset_name + "a")
+            load_dataset(f"a{dataset_name}a")
 
     def test_print_available_datasets(self):
         # Go over all parameter combinations,

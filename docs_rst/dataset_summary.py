@@ -56,9 +56,7 @@ if __name__ == "__main__":
         # Name, description, and number of entries output
         print(make_rst_subtitle(dataset))
         print(get_dataset_description(dataset))
-        print("\n**Number of entries:** {}\n".format(
-            get_dataset_num_entries(dataset)
-        ))
+        print(f"\n**Number of entries:** {get_dataset_num_entries(dataset)}\n")
 
         # Get all columns and find the max length for border string
         dataset_columns = get_dataset_columns(dataset)

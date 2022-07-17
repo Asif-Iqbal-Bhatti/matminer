@@ -29,8 +29,9 @@ class DataSetsTest(DatasetTest):
             # Get rid of dataset if it's on the disk already
             data_path = os.path.join(
                 self.dataset_dir,
-                dataset_name + "." + self.dataset_dict[dataset_name]["file_type"],
+                f"{dataset_name}." + self.dataset_dict[dataset_name]["file_type"],
             )
+
             if os.path.exists(data_path):
                 os.remove(data_path)
 
@@ -45,8 +46,9 @@ class DataSetsTest(DatasetTest):
             # Test all columns are there
             self.assertEqual(
                 sorted(list(df)),
-                sorted(header for header in self.dataset_dict[dataset_name]["columns"].keys()),
+                sorted(iter(self.dataset_dict[dataset_name]["columns"].keys())),
             )
+
 
             # Test each column for appropriate type
             if object_headers is None:
@@ -72,9 +74,6 @@ class DataSetsTest(DatasetTest):
             if test_func is not None:
                 test_func(df)
 
-        # "Soft" check that just makes sure the dataset download page is active
-        # This runs when on a system with the CI environment var present
-        # (e.g. when running a continuous integration VCS system)
         else:
             download_page = requests.head(self.dataset_dict[dataset_name]["url"])
             self.assertTrue(download_page.ok)

@@ -51,7 +51,9 @@ class AtomicOrbitals(BaseFeaturizer):
         integer_comp, factor = comp.get_integer_formula_and_factor()
 
         # warning message if composition is dilute and truncated
-        if not (len(Composition(comp).elements) == len(Composition(integer_comp).elements)):
+        if len(Composition(comp).elements) != len(
+            Composition(integer_comp).elements
+        ):
             warn(f"AtomicOrbitals: {comp} truncated to {integer_comp}")
 
         homo_lumo = MolecularOrbitals(integer_comp).band_edges
@@ -126,11 +128,14 @@ class ValenceOrbital(BaseFeaturizer):
         # Get the mean number of electrons in each shell
         avg = [
             PropertyStats.mean(
-                self.data_source.get_elemental_properties(elements, "N%sValence" % orb),
+                self.data_source.get_elemental_properties(
+                    elements, f"N{orb}Valence"
+                ),
                 weights=fractions,
             )
             for orb in self.orbitals
         ]
+
 
         # If needed, get fraction of electrons in each shell
         if "frac" in self.props:
@@ -150,9 +155,7 @@ class ValenceOrbital(BaseFeaturizer):
     def feature_labels(self):
         labels = []
         for prop in self.props:
-            for orb in self.orbitals:
-                labels.append(f"{prop} {orb} valence electrons")
-
+            labels.extend(f"{prop} {orb} valence electrons" for orb in self.orbitals)
         return labels
 
     def citations(self):
@@ -170,8 +173,7 @@ class ValenceOrbital(BaseFeaturizer):
             "number={44}, journal={ChemInform}, author={Deml, Ann M. and Ohayre, Ryan and "
             "Wolverton, Chris and Stevanovic, Vladan}, year={2016}}"
         )
-        citations = [ward_citation, deml_citation]
-        return citations
+        return [ward_citation, deml_citation]
 
     def implementors(self):
         return ["Jiming Chen", "Logan Ward"]

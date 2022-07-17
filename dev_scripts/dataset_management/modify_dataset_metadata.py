@@ -79,11 +79,12 @@ def generate_new_dataset(dataset):
             'url': url
         }
 
-        needed_attribs = list(compress(
-            [key for key in current_entry.keys()],
-            map(lambda x: not x, [value for value in current_entry.values()])))
-
-        if needed_attribs:
+        if needed_attribs := list(
+            compress(
+                list(current_entry.keys()),
+                map(lambda x: not x, list(current_entry.values())),
+            )
+        ):
             print(f"Still needed elements are: {', '.join(needed_attribs)}")
         else:
             end_choice = input("All attributes filled, "
@@ -106,12 +107,9 @@ def generate_new_dataset(dataset):
                 reference_lines = []
                 print("Add a bibtex reference, use multiple lines "
                       "for newlines, hit return to finish the entry: ")
-                bibtex_ref = input()
-                while bibtex_ref:
+                while bibtex_ref := input():
                     reference_lines.append(bibtex_ref.strip())
-                    bibtex_ref = input()
-                new_reference = "\n".join(reference_lines).strip()
-                if new_reference:
+                if new_reference := "\n".join(reference_lines).strip():
                     print('The following will be added:')
                     print(new_reference)
                     bibtex.append(new_reference)
@@ -155,12 +153,9 @@ def generate_new_dataset(dataset):
             reference_lines = []
             print("Add a plain english reference, use multiple lines "
                   "for newlines, hit return to finish the entry: ")
-            ref = input()
-            while ref:
+            while ref := input():
                 reference_lines.append(ref.strip())
-                ref = input()
-            new_reference = "\n".join(reference_lines).strip()
-            if new_reference:
+            if new_reference := "\n".join(reference_lines).strip():
                 print('The following will be added:')
                 print(new_reference)
                 reference = new_reference
@@ -189,9 +184,8 @@ if __name__ == '__main__':
         if command == "1":
             print("Current Datasets:")
             pprint(_temp_dataset, width=150)
-        # Remove a dataset
         elif command == "2":
-            print(f"Current datasets are: {', '.join([thing for thing in _temp_dataset.keys()])}")
+            print(f"Current datasets are: {', '.join(list(_temp_dataset.keys()))}")
             print("What would you like to remove? (hit return to cancel):")
             removal_dataset = input(">>> ")
             if removal_dataset and removal_dataset in _temp_dataset:
@@ -199,13 +193,11 @@ if __name__ == '__main__':
                 unsaved_changes = True
             elif removal_dataset:
                 print("Dataset does not exist")
-        # Add a dataset
         elif command == "3":
             dataset_name, dataset_info = generate_new_dataset(_temp_dataset)
             if dataset_name is not None:
                 _temp_dataset[dataset_name] = dataset_info
                 unsaved_changes = True
-        # Save changes
         elif command == "s":
             if not unsaved_changes:
                 print("No changes to save")
@@ -215,7 +207,6 @@ if __name__ == '__main__':
                         "dataset_metadata.json")), "w") as outfile:
                     json.dump(_temp_dataset, outfile, indent=4, sort_keys=True)
                 unsaved_changes = False
-        # Quit
         elif command == "q":
             if unsaved_changes:
                 print("There are unsaved changes, "

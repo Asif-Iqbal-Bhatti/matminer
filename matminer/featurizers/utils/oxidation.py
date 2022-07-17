@@ -7,7 +7,7 @@ def has_oxidation_states(comp):
     Returns:
         (boolean) Whether this composition object contains oxidation states
     """
-    for el in comp.elements:
-        if not hasattr(el, "oxi_state") or el.oxi_state is None:
-            return False
-    return True
+    return not any(
+        not hasattr(el, "oxi_state") or el.oxi_state is None
+        for el in comp.elements
+    )

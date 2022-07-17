@@ -62,8 +62,10 @@ class SiteDOS(BaseFeaturizer):
 
         features = []
         for edge in ["cbm", "vbm"]:
-            for score in ["s", "p", "d", "f", "total"]:
-                features.append(orbscores[edge][score])
+            features.extend(
+                orbscores[edge][score] for score in ["s", "p", "d", "f", "total"]
+            )
+
         return features
 
     def feature_labels(self):
@@ -73,8 +75,7 @@ class SiteDOS(BaseFeaturizer):
         """
         labels = []
         for edge in ["cbm", "vbm"]:
-            for score in ["s", "p", "d", "f", "total"]:
-                labels.append(f"{edge}_{score}")
+            labels.extend(f"{edge}_{score}" for score in ["s", "p", "d", "f", "total"])
         return labels
 
     def citations(self):
@@ -159,9 +160,10 @@ class DOSFeaturizer(BaseFeaturizer):
                 if i < len(orbscores):
                     for p in ["character", "specie"]:
                         feat[f"{ex}_{p}_{i + 1}"] = sd[p]
-                    feat[f"{ex}_location_{i + 1}"] = "{};{};{}".format(
-                        sd["location"][0], sd["location"][1], sd["location"][2]
-                    )
+                    feat[
+                        f"{ex}_location_{i + 1}"
+                    ] = f'{sd["location"][0]};{sd["location"][1]};{sd["location"][2]}'
+
                     feat[f"{ex}_score_{i + 1}"] = float(sd[f"{ex}_score"])
                 else:
                     for p in ["character", "specie", "location", "score"]:
@@ -180,8 +182,11 @@ class DOSFeaturizer(BaseFeaturizer):
             labels.append(f"{ex}_hybridization")
             i = 0
             while i < self.contributors:
-                for p in ["character", "specie", "location", "score"]:
-                    labels.append(f"{ex}_{p}_{i + 1}")
+                labels.extend(
+                    f"{ex}_{p}_{i + 1}"
+                    for p in ["character", "specie", "location", "score"]
+                )
+
                 i += 1
 
         return labels
@@ -281,9 +286,7 @@ class DopingFermi(BaseFeaturizer):
             example: "fermi_c-1e+20T300" that is the fermi level for the
             electron concentration of 1e20 (c-1e+20) and temperature of 300K.
         """
-        labels = []
-        for c in self.dopings:
-            labels.append(f"fermi_c{c}T{self.T}")
+        labels = [f"fermi_c{c}T{self.T}" for c in self.dopings]
         if self.return_eref:
             labels.append(f"{self.eref} eref")
         return labels
@@ -389,10 +392,11 @@ class Hybridization(BaseFeaturizer):
         for ex in ["cbm", "vbm"]:
             for orbital in ["s", "p", "d", "f"]:
                 labels.append(f"{ex}_{orbital}")
-                for specie in self.species:
-                    labels.append(f"{ex}_{specie}_{orbital}")
-            for hybrid in ["sp", "sd", "sf", "pd", "pf", "df"]:
-                labels.append(f"{ex}_{hybrid}")
+                labels.extend(f"{ex}_{specie}_{orbital}" for specie in self.species)
+            labels.extend(
+                f"{ex}_{hybrid}" for hybrid in ["sp", "sd", "sf", "pd", "pf", "df"]
+            )
+
         return labels
 
     def citations(self):
@@ -451,7 +455,7 @@ class DosAsymmetry(BaseFeaturizer):
         dos_total = [sum(id) for id in zip(dos_up, dos_down)]
 
         # determines energy range to sample
-        energies = [e for e in dos.energies]
+        energies = list(dos.energies)
         vbm_space = np.linspace(
             dos.efermi,
             dos.efermi - (5.0 * self.decay_length),
@@ -464,12 +468,17 @@ class DosAsymmetry(BaseFeaturizer):
         )
 
         # accumulates dos score over energy ranges
-        vbm_score = 0
-        for e in vbm_space:
-            vbm_score += np.interp(e, energies, dos_total) * np.exp(-(dos.efermi - e) * self.decay_length)
-        cbm_score = 0
-        for e in cbm_space:
-            cbm_score += np.interp(e, energies, dos_total) * np.exp(-(e - dos.efermi) * self.decay_length)
+        vbm_score = sum(
+            np.interp(e, energies, dos_total)
+            * np.exp(-(dos.efermi - e) * self.decay_length)
+            for e in vbm_space
+        )
+
+        cbm_score = sum(
+            np.interp(e, energies, dos_total)
+            * np.exp(-(e - dos.efermi) * self.decay_length)
+            for e in cbm_space
+        )
 
         return np.log(cbm_score / vbm_score)
 
@@ -520,24 +529,29 @@ def get_cbm_vbm_scores(dos, decay_length, sampling_resolution, gaussian_smear):
     sites = structure.sites
 
     orbital_scores = []
-    for i in range(0, len(sites)):
+    for i in range(len(sites)):
         site = sites[i]
         proj = dos.get_site_spd_dos(site)
         for orb in proj:
             # calculate contribution
-            energies = [e for e in proj[orb].energies]
+            energies = list(proj[orb].energies)
             smear_dos = proj[orb].get_smeared_densities(gaussian_smear)
             dos_up = smear_dos[Spin.up]
             dos_down = smear_dos[Spin.down] if Spin.down in smear_dos else smear_dos[Spin.up]
             dos_total = [sum(id) for id in zip(dos_up, dos_down)]
-            vbm_score = 0
             vbm_space = np.linspace(vbm, vbm - (5.0 * decay_length), num=sampling_resolution)
-            for e in vbm_space:
-                vbm_score += np.interp(e, energies, dos_total) * np.exp(-(vbm - e) * decay_length)
-            cbm_score = 0
+            vbm_score = sum(
+                np.interp(e, energies, dos_total)
+                * np.exp(-(vbm - e) * decay_length)
+                for e in vbm_space
+            )
+
             cbm_space = np.linspace(cbm, cbm + (5.0 * decay_length), num=sampling_resolution)
-            for e in cbm_space:
-                cbm_score += np.interp(e, energies, dos_total) * np.exp(-(e - cbm) * decay_length)
+            cbm_score = sum(
+                np.interp(e, energies, dos_total)
+                * np.exp(-(e - cbm) * decay_length)
+                for e in cbm_space
+            )
 
             # add orbital scores to list
             orbital_score = {
@@ -550,8 +564,14 @@ def get_cbm_vbm_scores(dos, decay_length, sampling_resolution, gaussian_smear):
             orbital_scores.append(orbital_score)
 
     # normalize by total contribution
-    total_cbm = sum(orbital_scores[i]["cbm_score"] for i in range(0, len(orbital_scores)))
-    total_vbm = sum(orbital_scores[i]["vbm_score"] for i in range(0, len(orbital_scores)))
+    total_cbm = sum(
+        orbital_scores[i]["cbm_score"] for i in range(len(orbital_scores))
+    )
+
+    total_vbm = sum(
+        orbital_scores[i]["vbm_score"] for i in range(len(orbital_scores))
+    )
+
     for orbital in orbital_scores:
         orbital["cbm_score"] /= total_cbm
         orbital["vbm_score"] /= total_vbm
@@ -605,21 +625,27 @@ def get_site_dos_scores(dos, idx, decay_length, sampling_resolution, gaussian_sm
         dos_total = [sum(id) for id in zip(dos_up, dos_down)]
 
         # determine energy range to sample
-        energies = [e for e in proj[orb].energies]
+        energies = list(proj[orb].energies)
         vbm_space = np.linspace(vbm, vbm - (5.0 * decay_length), num=sampling_resolution)
         cbm_space = np.linspace(cbm, cbm + (5.0 * decay_length), num=sampling_resolution)
 
         # accumulate dos score over energy range
-        vbm_score = 0
-        for e in vbm_space:
-            vbm_score += np.interp(e, energies, dos_total) * np.exp(-(vbm - e) * decay_length)
-        cbm_score = 0
-        for e in cbm_space:
-            cbm_score += np.interp(e, energies, dos_total) * np.exp(-(e - cbm) * decay_length)
+        vbm_score = sum(
+            np.interp(e, energies, dos_total)
+            * np.exp(-(vbm - e) * decay_length)
+            for e in vbm_space
+        )
+
+        cbm_score = sum(
+            np.interp(e, energies, dos_total)
+            * np.exp(-(e - cbm) * decay_length)
+            for e in cbm_space
+        )
+
         orbital_scores[str(orb)] = {"cbm": cbm_score, "vbm": vbm_score}
 
     # ensure that f-orbitals are represented as zero contribution if none
-    if not ("f" in orbital_scores.keys()):
+    if "f" not in orbital_scores:
         orbital_scores["f"] = {"cbm": 0.0, "vbm": 0.0}
 
     # reorder scores so band edge is first followed by orbital
@@ -630,9 +656,9 @@ def get_site_dos_scores(dos, idx, decay_length, sampling_resolution, gaussian_sm
             reordered_scores[band][orb] = orbital_scores[orb][band]
 
     # normalize by total cbm/vbm edge contribution from site
-    for edge in reordered_scores:
+    for edge, value in reordered_scores.items():
         total_score = sum(reordered_scores[edge].values())
-        for orb in reordered_scores[edge].keys():
+        for orb in value.keys():
             reordered_scores[edge][orb] /= total_score
         reordered_scores[edge]["total"] = total_score
     return reordered_scores

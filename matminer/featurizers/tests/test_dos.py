@@ -37,7 +37,7 @@ class DOSFeaturesTest(PymatgenTest):
         self.assertArrayEqual(features0, features1)
 
         # ensure that fractional scores sum to 1
-        total_fraction = sum(features0[0:4])
+        total_fraction = sum(features0[:4])
         self.assertAlmostEqual(total_fraction, 1.0, 3)
         total_fraction = sum(features0[5:9])
         self.assertAlmostEqual(total_fraction, 1.0, 3)

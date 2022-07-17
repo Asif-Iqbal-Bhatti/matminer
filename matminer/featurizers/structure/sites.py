@@ -55,7 +55,7 @@ class SiteStatsFingerprint(BaseFeaturizer):
         """
 
         self.site_featurizer = site_featurizer
-        self.stats = tuple([stats]) if type(stats) == str else stats
+        self.stats = (stats, ) if type(stats) == str else stats
         if self.stats and "_mode" in "".join(self.stats):
             nmodes = 0
             for stat in self.stats:
@@ -90,7 +90,7 @@ class SiteStatsFingerprint(BaseFeaturizer):
 
     def featurize(self, s):
         # Get each feature for each site
-        vals = [[] for t in self._site_labels]
+        vals = [[] for _ in self._site_labels]
         for i, site in enumerate(s.sites):
             if (self.min_oxi is None or site.specie.oxi_state >= self.min_oxi) and (
                 self.max_oxi is None or site.specie.oxi_state >= self.max_oxi
@@ -109,9 +109,7 @@ class SiteStatsFingerprint(BaseFeaturizer):
         # Compute the requested statistics
         stats = []
         for op in vals:
-            for stat in self.stats:
-                stats.append(PropertyStats().calc_stat(op, stat))
-
+            stats.extend(PropertyStats().calc_stat(op, stat) for stat in self.stats)
         # If desired, compute covariances
         if self.covariance:
             if len(s) == 1:
@@ -124,22 +122,18 @@ class SiteStatsFingerprint(BaseFeaturizer):
         return stats
 
     def feature_labels(self):
-        if self.stats:
-            labels = []
-            # Make labels associated with the statistics
-            for attr in self._site_labels:
-                for stat in self.stats:
-                    labels.append(f"{stat} {attr}")
-
-            # Make labels associated with the site labels
-            if self.covariance:
-                sl = self._site_labels
-                for i, sa in enumerate(sl):
-                    for sb in sl[(i + 1) :]:
-                        labels.append(f"covariance {sa}-{sb}")
-            return labels
-        else:
+        if not self.stats:
             return self._site_labels
+        labels = []
+            # Make labels associated with the statistics
+        for attr in self._site_labels:
+            labels.extend(f"{stat} {attr}" for stat in self.stats)
+            # Make labels associated with the site labels
+        if self.covariance:
+            sl = self._site_labels
+            for i, sa in enumerate(sl):
+                labels.extend(f"covariance {sa}-{sb}" for sb in sl[(i + 1) :])
+        return labels
 
     def citations(self):
         return self.site_featurizer.citations()
@@ -200,8 +194,9 @@ class SiteStatsFingerprint(BaseFeaturizer):
                     ],
                     signed=False,
                 ),
-                stats=["holder_mean::%d" % d for d in range(0, 4 + 1)] + ["std_dev"],
+                stats=["holder_mean::%d" % d for d in range(4 + 1)] + ["std_dev"],
             )
+
 
         elif preset == "Composition-dejong2016_SD":
             return SiteStatsFingerprint(

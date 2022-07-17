@@ -236,19 +236,13 @@ def _preprocess_brgoch_superhard_training(file_path):
 
             if ((bulk_relative_dif > .05 and bulk_abs_dif > 1)
                     or (shear_relative_dif > .05 and shear_abs_dif > 1)):
-                err_msg = "\nMP entry selected for {} with space group {} " \
-                          "has a difference in elastic data greater than 5 " \
-                          "percent/1GPa!".format(material["formula"],
-                                                 material["space_group_number"])
+                err_msg = f'\nMP entry selected for {material["formula"]} with space group {material["space_group_number"]} has a difference in elastic data greater than 5 percent/1GPa!'
 
-                err_msg += "\nBulk moduli dataset vs. MP: {} {}".format(
-                    material["bulk_modulus"],
-                    mat_data["elasticity.K_VRH"]
-                )
-                err_msg += "\nShear moduli dataset vs. MP: {} {}".format(
-                    material["shear_modulus"],
-                    mat_data["elasticity.G_VRH"]
-                )
+
+                err_msg += f'\nBulk moduli dataset vs. MP: {material["bulk_modulus"]} {mat_data["elasticity.K_VRH"]}'
+
+                err_msg += f'\nShear moduli dataset vs. MP: {material["shear_modulus"]} {mat_data["elasticity.G_VRH"]}'
+
                 err_msg += "\nData point will be marked as suspect\n"
 
                 logging.warning(err_msg)
@@ -262,9 +256,10 @@ def _preprocess_brgoch_superhard_training(file_path):
 
     # Report on discarded entries
     if np.any(df["suspect_value"]):
-        print("{} entries could not be accurately cross referenced with "
-              "Materials Project. "
-              "See log file for details".format(len(df[df["suspect_value"]])))
+        print(
+            f'{len(df[df["suspect_value"]])} entries could not be accurately cross referenced with Materials Project. See log file for details'
+        )
+
 
     # Turn structure dicts into Structure objects,
     # leave missing structures as nan values
@@ -274,8 +269,10 @@ def _preprocess_brgoch_superhard_training(file_path):
             if isinstance(s, dict):
                 s = Structure.from_dict(s)
             elif not isinstance(s, np.float) and np.isnan(s):
-                raise ValueError("Something went wrong, invalid "
-                                 "value {} in structure column".format(s))
+                raise ValueError(
+                    f"Something went wrong, invalid value {s} in structure column"
+                )
+
         structure_obs.append(s)
 
     df["structure"] = structure_obs
@@ -1152,8 +1149,8 @@ def _preprocess_piezoelectric_tensor(file_path):
     """
     df = _read_dataframe_from_file(file_path, comment="#")
 
+    c = 'piezoelectric_tensor'
     for i in list(df.index):
-        c = 'piezoelectric_tensor'
         df.at[(i, c)] = np.array(ast.literal_eval(df.at[(i, c)]))
     df['cif'] = df['structure']
     df['structure'] = pd.Series([Poscar.from_string(s).structure
@@ -1283,10 +1280,10 @@ def _file_to_dataframe(file_path):
     # If dictionary lookup doesn't find a preprocessor none will be applied
     if file_name not in _datasets_to_preprocessing_routines.keys():
         print(
-            "Warning: The dataset {} has no predefined preprocessor "
-            "and will be loaded using only the default pd.read_* "
-            "function.".format(file_name), flush=True
+            f"Warning: The dataset {file_name} has no predefined preprocessor and will be loaded using only the default pd.read_* function.",
+            flush=True,
         )
+
         df = _read_dataframe_from_file(file_path)
 
     else:
@@ -1358,8 +1355,7 @@ if __name__ == "__main__":
         for index, dataframe in enumerate(dataframe_list):
             # Construct the file path to store dataframe at and store it
             # Str conversion purely to get rid of an annoying type warning
-            json_destination = join(destination,
-                                    str(dataset_names[index]) + ".json")
+            json_destination = join(destination, f"{str(dataset_names[index])}.json")
             store_dataframe_as_json(dataframe, json_destination,
                                     compression=args.compression_type)
             # Compute and store file metadata

@@ -145,9 +145,11 @@ class DemlData(OxidationStateDependentData, OxidationStatesMixin):
         ]
 
         # Compute the FERE correction energy
-        fere_corr = {}
-        for k, v in self.all_props["GGAU_Etot"].items():
-            fere_corr[k] = self.all_props["mus_fere"][k] - v
+        fere_corr = {
+            k: self.all_props["mus_fere"][k] - v
+            for k, v in self.all_props["GGAU_Etot"].items()
+        }
+
         self.all_props["FERE correction"] = fere_corr
 
         # List out the available charge-dependent properties
@@ -175,12 +177,11 @@ class DemlData(OxidationStateDependentData, OxidationStatesMixin):
         return self.all_props["charge_states"][elem.symbol]
 
     def get_charge_dependent_property(self, element, charge, property_name):
-        if property_name == "total_ioniz":
-            if charge < 0:
-                raise ValueError("total ionization energy only defined for charge > 0")
-            return sum(self.all_props["ionization_en"][element.symbol][:charge])
-        else:
+        if property_name != "total_ioniz":
             return self.all_props[property_name].get(element.symbol, {}).get(charge, np.nan)
+        if charge < 0:
+            raise ValueError("total ionization energy only defined for charge > 0")
+        return sum(self.all_props["ionization_en"][element.symbol][:charge])
 
 
 class MagpieData(AbstractData, OxidationStatesMixin):
@@ -196,18 +197,18 @@ class MagpieData(AbstractData, OxidationStatesMixin):
     """
 
     def __init__(self):
-        self.all_elemental_props = dict()
-        available_props = []
+        self.all_elemental_props = {}
         self.data_dir = os.path.join(module_dir, "data_files", "magpie_elementdata")
 
-        # Make a list of available properties
-        for datafile in glob(os.path.join(self.data_dir, "*.table")):
-            available_props.append(os.path.basename(datafile).replace(".table", ""))
+        available_props = [
+            os.path.basename(datafile).replace(".table", "")
+            for datafile in glob(os.path.join(self.data_dir, "*.table"))
+        ]
 
         # parse and store elemental properties
         for descriptor_name in available_props:
             with open(os.path.join(self.data_dir, f"{descriptor_name}.table")) as f:
-                self.all_elemental_props[descriptor_name] = dict()
+                self.all_elemental_props[descriptor_name] = {}
                 lines = f.readlines()
                 for atomic_no in range(1, len(_pt_data) + 1):  # max Z=103
                     try:
@@ -402,9 +403,11 @@ class MatscholarElementData(AbstractData):
         with open(dfile) as fp:
             embeddings = json.load(fp)
         self.prop_names = [f"embedding {i}" for i in range(1, 201)]
-        all_element_data = {}
-        for el, embedding in embeddings.items():
-            all_element_data[el] = dict(zip(self.prop_names, embedding))
+        all_element_data = {
+            el: dict(zip(self.prop_names, embedding))
+            for el, embedding in embeddings.items()
+        }
+
         self.all_element_data = all_element_data
 
     def get_elemental_property(self, elem, property_name):
@@ -552,8 +555,7 @@ class IUCrBondValenceData:
                     }
                     data.append(entry)
         new_data = pd.DataFrame(data)
-        new_params = self.params.append(new_data, sort=True, ignore_index=True)
-        return new_params
+        return self.params.append(new_data, sort=True, ignore_index=True)
 
     def get_bv_params(self, cation, anion, cat_val, an_val):
         """Lookup bond valence parameters from IUPAC table.
