@@ -113,7 +113,7 @@ class MPDSDataRetrieval(BaseDataRetrieval):
 
         Returns: None
         """
-        self.api_key = api_key if api_key else os.environ["MPDS_KEY"]
+        self.api_key = api_key or os.environ["MPDS_KEY"]
         self.network = httplib2.Http()
         self.endpoint = endpoint or MPDSDataRetrieval.endpoint
 
@@ -139,20 +139,14 @@ class MPDSDataRetrieval(BaseDataRetrieval):
         )
 
         if response.status != 200:
-            return {
-                "error": "HTTP error code %s" % response.status,
-                "code": response.status,
-            }
+            return {"error": f"HTTP error code {response.status}", "code": response.status}
         try:
             content = json.loads(content)
         except Exception:
             return {"error": "Unreadable data obtained"}
         if content.get("error"):
             return {"error": content["error"]}
-        if not content["out"]:
-            return {"error": "No hits", "code": 1}
-
-        return content
+        return content if content["out"] else {"error": "No hits", "code": 1}
 
     def _massage(self, array, fields):
         if not fields:
@@ -245,13 +239,10 @@ class MPDSDataRetrieval(BaseDataRetrieval):
 
             if result["npages"] > MPDSDataRetrieval.maxnpages:
                 raise APIError(
-                    "Too much hits (%s > %s), please, be more specific"
-                    % (
-                        result["count"],
-                        MPDSDataRetrieval.maxnpages * MPDSDataRetrieval.pagesize,
-                    ),
+                    f'Too much hits ({result["count"]} > {MPDSDataRetrieval.maxnpages * MPDSDataRetrieval.pagesize}), please, be more specific',
                     1,
                 )
+
             assert result["npages"] > 0
 
             output.extend(self._massage(result["out"], fields))
@@ -325,9 +316,9 @@ class MPDSDataRetrieval(BaseDataRetrieval):
             return Structure.from_spacegroup(sg_n, Lattice.from_parameters(*cell_abc), els_noneq, basis_noneq)
 
         elif flavor == "ase" and use_ase:
-            atom_data = []
-            for num, i in enumerate(basis_noneq):
-                atom_data.append(Atom(els_noneq[num], tuple(i)))
+            atom_data = [
+                Atom(els_noneq[num], tuple(i)) for num, i in enumerate(basis_noneq)
+            ]
 
             return crystal(
                 atom_data,

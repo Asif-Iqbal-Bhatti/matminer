@@ -42,12 +42,11 @@ class CohesiveEnergy(BaseFeaturizer):
         if not formation_energy_per_atom:
             # Get formation energy of most stable structure from MP
             struct_lst = MPRester(self.mapi_key).get_data(comp.reduced_formula)
-            if len(struct_lst) > 0:
-                most_stable_entry = sorted(struct_lst, key=lambda e: e["energy_per_atom"])[0]
-                formation_energy_per_atom = most_stable_entry["formation_energy_per_atom"]
-            else:
+            if len(struct_lst) <= 0:
                 raise ValueError(f"No structure found in MP for {comp}")
 
+            most_stable_entry = sorted(struct_lst, key=lambda e: e["energy_per_atom"])[0]
+            formation_energy_per_atom = most_stable_entry["formation_energy_per_atom"]
         # Subtract elemental cohesive energies from formation energy
         cohesive_energy = -formation_energy_per_atom * comp.num_atoms
         for el in el_amt_dict:
@@ -98,18 +97,15 @@ class CohesiveEnergyMP(BaseFeaturizer):
         # Get formation energy of most stable structure from MP
         with MPRester(self.mapi_key) as mpr:
             struct_lst = mpr.get_data(comp.reduced_formula)
-            if len(struct_lst) > 0:
-                most_stable_entry = sorted(struct_lst, key=lambda e: e["energy_per_atom"])[0]
-                try:
-                    return [mpr.get_cohesive_energy(most_stable_entry["material_id"], per_atom=True)]
-                except Exception:
-                    raise ValueError(
-                        "No cohesive energy can be determined for material_id: {}".format(
-                            most_stable_entry["material_id"]
-                        )
-                    )
-            else:
+            if len(struct_lst) <= 0:
                 raise ValueError(f"No structure found in MP for {comp}")
+            most_stable_entry = sorted(struct_lst, key=lambda e: e["energy_per_atom"])[0]
+            try:
+                return [mpr.get_cohesive_energy(most_stable_entry["material_id"], per_atom=True)]
+            except Exception:
+                raise ValueError(
+                    f'No cohesive energy can be determined for material_id: {most_stable_entry["material_id"]}'
+                )
 
     def feature_labels(self):
         return ["cohesive energy (MP)"]

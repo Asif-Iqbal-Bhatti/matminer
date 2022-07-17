@@ -178,49 +178,33 @@ class ElementProperty(BaseFeaturizer):
         for attr in self.features:
             elem_data = [self.data_source.get_elemental_property(e, attr) for e in elements]
 
-            for stat in self.stats:
-                all_attributes.append(self.pstats.calc_stat(elem_data, stat, fractions))
+            all_attributes.extend(
+                self.pstats.calc_stat(elem_data, stat, fractions)
+                for stat in self.stats
+            )
 
         return all_attributes
 
     def feature_labels(self):
         labels = []
+        src = self.data_source.__class__.__name__
         for attr in self.features:
-            src = self.data_source.__class__.__name__
-            for stat in self.stats:
-                labels.append(f"{src} {stat} {attr}")
+            labels.extend(f"{src} {stat} {attr}" for stat in self.stats)
         return labels
 
     def citations(self):
-        if self.data_source.__class__.__name__ == "MagpieData":
-            citation = [
-                "@article{ward_agrawal_choudary_wolverton_2016, title={A general-purpose "
-                "machine learning framework for predicting properties of inorganic materials}, "
-                "volume={2}, DOI={10.1038/npjcompumats.2017.28}, number={1}, journal={npj "
-                "Computational Materials}, author={Ward, Logan and Agrawal, Ankit and Choudhary, "
-                "Alok and Wolverton, Christopher}, year={2016}}"
-            ]
-        elif self.data_source.__class__.__name__ == "DemlData":
-            citation = [
+        if self.data_source.__class__.__name__ == "DemlData":
+            return [
                 "@article{deml_ohayre_wolverton_stevanovic_2016, title={Predicting density "
                 "functional theory total energies and enthalpies of formation of metal-nonmetal "
                 "compounds by linear regression}, volume={47}, DOI={10.1002/chin.201644254}, "
                 "number={44}, journal={ChemInform}, author={Deml, Ann M. and Ohayre, Ryan and "
                 "Wolverton, Chris and Stevanovic, Vladan}, year={2016}}"
             ]
-        elif self.data_source.__class__.__name__ == "PymatgenData":
-            citation = [
-                "@article{Ong2013, author = {Ong, Shyue Ping and Richards, William Davidson and Jain, Anubhav and Hautier, "
-                "Geoffroy and Kocher, Michael and Cholia, Shreyas and Gunter, Dan and Chevrier, Vincent L. and Persson, "
-                "Kristin A. and Ceder, Gerbrand}, doi = {10.1016/j.commatsci.2012.10.028}, issn = {09270256}, "
-                "journal = {Computational Materials Science}, month = {feb}, pages = {314--319}, "
-                "publisher = {Elsevier B.V.}, title = {{Python Materials Genomics (pymatgen): A robust, open-source python "
-                "library for materials analysis}}, url = {http://linkinghub.elsevier.com/retrieve/pii/S0927025612006295}, "
-                "volume = {68}, year = {2013} } "
-            ]
+
         elif self.data_source.__class__.__name__ == "MEGNetElementData":
             # TODO: Cite MEGNet publication (not preprint) once released!
-            citation = [
+            return [
                 "@ARTICLE{2018arXiv181205055C,"
                 "author = {{Chen}, Chi and {Ye}, Weike and {Zuo}, Yunxing and {Zheng}, Chen and {Ong}, Shyue Ping},"
                 "title = '{Graph Networks as a Universal Machine Learning Framework for Molecules and Crystals}',"
@@ -236,9 +220,29 @@ class ElementProperty(BaseFeaturizer):
                 r"adsurl = {https://ui.adsabs.harvard.edu/\#abs/2018arXiv181205055C},"
                 "adsnote = {Provided by the SAO/NASA Astrophysics Data System}}"
             ]
+
+        elif self.data_source.__class__.__name__ == "MagpieData":
+            return [
+                "@article{ward_agrawal_choudary_wolverton_2016, title={A general-purpose "
+                "machine learning framework for predicting properties of inorganic materials}, "
+                "volume={2}, DOI={10.1038/npjcompumats.2017.28}, number={1}, journal={npj "
+                "Computational Materials}, author={Ward, Logan and Agrawal, Ankit and Choudhary, "
+                "Alok and Wolverton, Christopher}, year={2016}}"
+            ]
+
+        elif self.data_source.__class__.__name__ == "PymatgenData":
+            return [
+                "@article{Ong2013, author = {Ong, Shyue Ping and Richards, William Davidson and Jain, Anubhav and Hautier, "
+                "Geoffroy and Kocher, Michael and Cholia, Shreyas and Gunter, Dan and Chevrier, Vincent L. and Persson, "
+                "Kristin A. and Ceder, Gerbrand}, doi = {10.1016/j.commatsci.2012.10.028}, issn = {09270256}, "
+                "journal = {Computational Materials Science}, month = {feb}, pages = {314--319}, "
+                "publisher = {Elsevier B.V.}, title = {{Python Materials Genomics (pymatgen): A robust, open-source python "
+                "library for materials analysis}}, url = {http://linkinghub.elsevier.com/retrieve/pii/S0927025612006295}, "
+                "volume = {68}, year = {2013} } "
+            ]
+
         else:
-            citation = []
-        return citation
+            return []
 
     def implementors(self):
         return ["Jiming Chen", "Logan Ward", "Anubhav Jain", "Alex Dunn"]
@@ -311,19 +315,21 @@ class Meredig(BaseFeaturizer):
 
     def feature_labels(self):
         # Since we have more features than just element fractions, append 'fraction' to element symbols for clarity
-        element_fraction_features = [e + " fraction" for e in ElementFraction().feature_labels()]
+        element_fraction_features = [
+            f"{e} fraction" for e in ElementFraction().feature_labels()
+        ]
+
         valence_orbital_features = ValenceOrbital().feature_labels()
         return element_fraction_features + self._element_property_feature_labels + valence_orbital_features
 
     def citations(self):
-        citation = [
+        return [
             "@article{meredig_agrawal_kirklin_saal_doak_thompson_zhang_choudhary_wolverton_2014, title={Combinatorial "
             "screening for new materials in unconstrained composition space with machine learning}, "
             "volume={89}, DOI={10.1103/PhysRevB.89.094104}, number={1}, journal={Physical "
             "Review B}, author={B. Meredig, A. Agrawal, S. Kirklin, J. E. Saal, J. W. Doak, A. Thompson, "
             "K. Zhang, A. Choudhary, and C. Wolverton}, year={2014}}"
         ]
-        return citation
 
     def implementors(self):
         return ["Amalie Trewartha"]

@@ -81,8 +81,7 @@ class MDFDataRetrieval(BaseDataRetrieval):
 
         # Each of these requires unpacking a dictionary and sometimes a range
         for key in ["match_fields", "exclude_fields", "match_ranges", "exclude_ranges"]:
-            qvalue = criteria.get(key)
-            if qvalue:
+            if qvalue := criteria.get(key):
                 fn = getattr(self.forge, key[:-1])  # remove 's' at end
                 for field, value in qvalue.items():
                     if "ranges" in key:
@@ -158,5 +157,4 @@ def make_dataframe(docs, unwind_arrays=True):
 
     """
     flattened_docs = [flatten_dict(doc, unwind_arrays=unwind_arrays) for doc in docs]
-    df = pd.DataFrame(flattened_docs)
-    return df
+    return pd.DataFrame(flattened_docs)

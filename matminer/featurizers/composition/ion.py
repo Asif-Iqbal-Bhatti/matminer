@@ -36,22 +36,21 @@ class CationProperty(ElementProperty):
 
     @classmethod
     def from_preset(cls, preset_name):
-        if preset_name == "deml":
-            data_source = "deml"
-            features = [
-                "total_ioniz",
-                "xtal_field_split",
-                "magn_moment",
-                "so_coupling",
-                "sat_magn",
-            ]
-            stats = ["minimum", "maximum", "range", "mean", "std_dev"]
-        else:
+        if preset_name != "deml":
             raise ValueError('Preset "%s" not found' % preset_name)
+        data_source = "deml"
+        features = [
+            "total_ioniz",
+            "xtal_field_split",
+            "magn_moment",
+            "so_coupling",
+            "sat_magn",
+        ]
+        stats = ["minimum", "maximum", "range", "mean", "std_dev"]
         return cls(data_source, features, stats)
 
     def feature_labels(self):
-        return [f + " of cations" for f in super().feature_labels()]
+        return [f"{f} of cations" for f in super().feature_labels()]
 
     def featurize(self, comp):
         # Check if oxidation states are present
@@ -72,8 +71,9 @@ class CationProperty(ElementProperty):
         for attr in self.features:
             elem_data = [self.data_source.get_charge_dependent_property_from_specie(c, attr) for c in cations]
 
-            for stat in self.stats:
-                all_attributes.append(pstats.calc_stat(elem_data, stat, fractions))
+            all_attributes.extend(
+                pstats.calc_stat(elem_data, stat, fractions) for stat in self.stats
+            )
 
         return all_attributes
 
@@ -121,7 +121,7 @@ class OxidationStates(BaseFeaturizer):
         return [PropertyStats.calc_stat(oxid_states, s, fractions) for s in self.stats]
 
     def feature_labels(self):
-        return ["%s oxidation state" % s for s in self.stats]
+        return [f"{s} oxidation state" for s in self.stats]
 
     def citations(self):
         return [
@@ -169,10 +169,10 @@ class IonProperty(BaseFeaturizer):
 
         elements, fractions = zip(*comp.element_composition.items())
 
+        avg_ionic_char = 0
         if len(elements) < 2:  # Single element
             cpd_possible = True
             max_ionic_char = 0
-            avg_ionic_char = 0
         else:
             # Get magpie data for each element
             elec = self.data_source.get_elemental_properties(elements, "X")
@@ -184,12 +184,11 @@ class IonProperty(BaseFeaturizer):
             else:
                 oxidation_states = [self.data_source.get_oxidation_states(e) for e in elements]
                 if self.fast:
-                    # Assume each element can have only 1 oxidation state
-                    cpd_possible = False
-                    for ox in itertools.product(*oxidation_states):
-                        if np.isclose(np.dot(ox, fractions), 0):
-                            cpd_possible = True
-                            break
+                    cpd_possible = any(
+                        np.isclose(np.dot(ox, fractions), 0)
+                        for ox in itertools.product(*oxidation_states)
+                    )
+
                 else:
                     #  Use pymatgen's oxidation state checker which
                     #   can detect whether an takes >1 oxidation state (as in Fe3O4)
@@ -201,8 +200,6 @@ class IonProperty(BaseFeaturizer):
             el_frac = list(np.true_divide(fractions, sum(fractions)))
 
             ionic_char = []
-            avg_ionic_char = 0
-
             for pair in atom_pairs:
                 XA = elec[pair[0]]
                 XB = elec[pair[1]]
@@ -214,18 +211,16 @@ class IonProperty(BaseFeaturizer):
         return [cpd_possible, max_ionic_char, avg_ionic_char]
 
     def feature_labels(self):
-        labels = ["compound possible", "max ionic char", "avg ionic char"]
-        return labels
+        return ["compound possible", "max ionic char", "avg ionic char"]
 
     def citations(self):
-        citation = [
+        return [
             "@article{ward_agrawal_choudary_wolverton_2016, title={A general-purpose "
             "machine learning framework for predicting properties of inorganic materials}, "
             "volume={2}, DOI={10.1038/npjcompumats.2017.28}, number={1}, journal={npj "
             "Computational Materials}, author={Ward, Logan and Agrawal, Ankit and Choudhary, "
             "Alok and Wolverton, Christopher}, year={2016}}"
         ]
-        return citation
 
     def implementors(self):
         return ["Jiming Chen", "Logan Ward"]
@@ -274,14 +269,13 @@ class ElectronAffinity(BaseFeaturizer):
         return ["avg anion electron affinity"]
 
     def citations(self):
-        citation = [
+        return [
             "@article{deml_ohayre_wolverton_stevanovic_2016, title={Predicting density "
             "functional theory total energies and enthalpies of formation of metal-nonmetal "
             "compounds by linear regression}, volume={47}, DOI={10.1002/chin.201644254}, "
             "number={44}, journal={ChemInform}, author={Deml, Ann M. and Ohayre, Ryan and "
             "Wolverton, Chris and Stevanovic, Vladan}, year={2016}}"
         ]
-        return citation
 
     def implementors(self):
         return ["Jiming Chen", "Logan Ward"]
@@ -353,20 +347,16 @@ class ElectronegativityDiff(BaseFeaturizer):
         return [PropertyStats.calc_stat(en_difference, stat, cation_fractions) for stat in self.stats]
 
     def feature_labels(self):
-        labels = []
-        for stat in self.stats:
-            labels.append("%s EN difference" % stat)
-        return labels
+        return [f"{stat} EN difference" for stat in self.stats]
 
     def citations(self):
-        citation = [
+        return [
             "@article{deml_ohayre_wolverton_stevanovic_2016, title={Predicting density "
             "functional theory total energies and enthalpies of formation of metal-nonmetal "
             "compounds by linear regression}, volume={47}, DOI={10.1002/chin.201644254}, "
             "number={44}, journal={ChemInform}, author={Deml, Ann M. and Ohayre, Ryan and "
             "Wolverton, Chris and Stevanovic, Vladan}, year={2016}}"
         ]
-        return citation
 
     def implementors(self):
         return ["Jiming Chen", "Logan Ward"]

@@ -112,11 +112,10 @@ class SOAP(BaseFeaturizer):
                     in the original Dscribe paper.
         Returns:
         """
-        valid_presets = ["formation_energy"]
         if preset == "formation_energy":
             return cls(6, 8, 8, 0.4, True, "gto", True)
-        else:
-            raise ValueError(f"'{preset}' is not a valid preset. Choose from {valid_presets}")
+        valid_presets = ["formation_energy"]
+        raise ValueError(f"'{preset}' is not a valid preset. Choose from {valid_presets}")
 
     def _check_fitted(self):
         if not self.soap:
@@ -134,7 +133,7 @@ class SOAP(BaseFeaturizer):
             self
         """
         # Check that pymatgen.Structures are provided
-        if not all([isinstance(struct, Structure) for struct in X]):
+        if not all(isinstance(struct, Structure) for struct in X):
             raise TypeError("This fit requires an array-like input of Pymatgen " "Structures and sites!")
 
         elements = set()

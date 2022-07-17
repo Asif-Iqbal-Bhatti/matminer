@@ -53,13 +53,14 @@ def publish(ctx):
 @task
 def release_github(ctx):
     payload = {
-        "tag_name": "v" + __version__,
+        "tag_name": f"v{__version__}",
         "target_commitish": "master",
-        "name": "v" + __version__,
+        "name": f"v{__version__}",
         "body": "",
         "draft": False,
-        "prerelease": False
+        "prerelease": False,
     }
+
     # For this to work properly, you need to go to your Github profile, generate
     # a "Personal access token". Then do export GITHUB_RELEASES_TOKEN="xyz1234"
     # (or add it to your bash_profile).
@@ -85,4 +86,4 @@ def release(ctx, test=False):
 @task
 def open_doc(ctx):
     pth = os.path.abspath("docs/index.html")
-    webbrowser.open("file://" + pth)
+    webbrowser.open(f"file://{pth}")

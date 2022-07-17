@@ -65,7 +65,7 @@ class AGNIFingerprints(BaseFeaturizer):
         dists = np.array([n[1] for n in neighbors])
 
         # If one of the features is direction-dependent, compute the :math:`(r_i - r_j) / r_{ij}`
-        if any([x in self.directions for x in ["x", "y", "z"]]):
+        if any(x in self.directions for x in ["x", "y", "z"]):
             disps = np.array([my_site.coords - s.coords for s in sites]) / dists[:, np.newaxis]
 
         # Compute the cutoff function
@@ -185,11 +185,13 @@ class OPSiteFingerprint(BaseFeaturizer):
             for t in t_list:
                 ot = t
                 p = None
-                if cn in cn_motif_op_params.keys():
-                    if t in cn_motif_op_params[cn].keys():
-                        ot = cn_motif_op_params[cn][t][0]
-                        if len(cn_motif_op_params[cn][t]) > 1:
-                            p = cn_motif_op_params[cn][t][1]
+                if (
+                    cn in cn_motif_op_params.keys()
+                    and t in cn_motif_op_params[cn].keys()
+                ):
+                    ot = cn_motif_op_params[cn][t][0]
+                    if len(cn_motif_op_params[cn][t]) > 1:
+                        p = cn_motif_op_params[cn][t][1]
                 self.ops[cn].append(LocalStructOrderParams([ot], parameters=[p]))
 
     def featurize(self, struct, idx):
@@ -224,13 +226,14 @@ class OPSiteFingerprint(BaseFeaturizer):
             this_dr = self.dr + float(i) * self.ddr
             this_idr = 1.0 / this_dr
             neigh_dist_alldrs[i] = []
-            for j in range(len(neigh_dist)):
+            for item in neigh_dist:
                 neigh_dist_alldrs[i].append(
                     [
-                        neigh_dist[j][0],
-                        (float(int(neigh_dist[j][1] * this_idr + 0.5)) + 0.5) * this_dr,
+                        item[0],
+                        (float(int(item[1] * this_idr + 0.5)) + 0.5) * this_dr,
                     ]
                 )
+
             d_sorted_alldrs[i] = []
             for n, d in neigh_dist_alldrs[i]:
                 if d not in d_sorted_alldrs[i]:
@@ -242,11 +245,11 @@ class OPSiteFingerprint(BaseFeaturizer):
         if self.cn_target_motif_op[1][0] == "sgl_bd":
             for i in range(-self.ndr, self.ndr + 1):
                 site_list = [s]
-                for n, dn in neigh_dist_alldrs[i]:
-                    site_list.append(n)
+                site_list.extend(n for n, dn in neigh_dist_alldrs[i])
                 opval = self.ops[1][0].get_order_parameters(
-                    site_list, 0, indices_neighs=[j for j in range(1, len(site_list))]
+                    site_list, 0, indices_neighs=list(range(1, len(site_list)))
                 )
+
                 opvals[i].append(opval[0])
 
         for i in range(-self.ndr, self.ndr + 1):
@@ -266,7 +269,7 @@ class OPSiteFingerprint(BaseFeaturizer):
                     # Set all OPs of non-CN-complying neighbor environments
                     # to zero if applicable.
                     if self.zero_ops and cn != this_cn:
-                        for it in range(len(self.cn_target_motif_op[cn])):
+                        for _ in range(len(self.cn_target_motif_op[cn])):
                             opvals[i].append(0)
                         continue
 
@@ -275,12 +278,10 @@ class OPSiteFingerprint(BaseFeaturizer):
                         opval = self.ops[cn][it].get_order_parameters(
                             site_list,
                             0,
-                            indices_neighs=[j for j in range(1, len(site_list))],
+                            indices_neighs=list(range(1, len(site_list))),
                         )
-                        if opval[0] is None:
-                            opval[0] = 0
-                        else:
-                            opval[0] = d_fac * opval[0]
+
+                        opval[0] = 0 if opval[0] is None else d_fac * opval[0]
                         opvals[i].append(opval[0])
                 prev_cn = this_cn
                 if prev_cn >= 12:
@@ -294,17 +295,13 @@ class OPSiteFingerprint(BaseFeaturizer):
             op_tmp = [opvals[i][j] for i in range(-self.ndr, self.ndr + 1)]
             minval = float(int(min(op_tmp) * idop - 1.5)) * self.dop
             # print(minval)
-            if minval < 0.0:
-                minval = 0.0
-            if minval > 1.0:
-                minval = 1.0
+            minval = max(minval, 0.0)
+            minval = min(minval, 1.0)
             # print(minval)
             maxval = float(int(max(op_tmp) * idop + 1.5)) * self.dop
             # print(maxval)
-            if maxval < 0.0:
-                maxval = 0.0
-            if maxval > 1.0:
-                maxval = 1.0
+            maxval = max(maxval, 0.0)
+            maxval = min(maxval, 1.0)
             # print(maxval)
             if minval == maxval:
                 minval = minval - self.dop
@@ -342,8 +339,7 @@ class OPSiteFingerprint(BaseFeaturizer):
     def feature_labels(self):
         labels = []
         for cn, li in self.cn_target_motif_op.items():
-            for e in li:
-                labels.append(f"{e} CN_{cn}")
+            labels.extend(f"{e} CN_{cn}" for e in li)
         return labels
 
     def citations(self):
@@ -395,7 +391,9 @@ class CrystalNNFingerprint(BaseFeaturizer):
             return CrystalNNFingerprint(op_types, chem_info=None, **kwargs)
 
         else:
-            raise RuntimeError('preset "{}" is not supported in ' "CrystalNNFingerprint".format(preset))
+            raise RuntimeError(
+                f'preset "{preset}" is not supported in CrystalNNFingerprint'
+            )
 
     def __init__(self, op_types, chem_info=None, **kwargs):
         """
@@ -428,11 +426,13 @@ class CrystalNNFingerprint(BaseFeaturizer):
                 else:
                     ot = t
                     p = None
-                    if cn in cn_motif_op_params.keys():
-                        if t in cn_motif_op_params[cn].keys():
-                            ot = cn_motif_op_params[cn][t][0]
-                            if len(cn_motif_op_params[cn][t]) > 1:
-                                p = cn_motif_op_params[cn][t][1]
+                    if (
+                        cn in cn_motif_op_params.keys()
+                        and t in cn_motif_op_params[cn].keys()
+                    ):
+                        ot = cn_motif_op_params[cn][t][0]
+                        if len(cn_motif_op_params[cn][t]) > 1:
+                            p = cn_motif_op_params[cn][t][1]
                     self.ops[cn].append(LocalStructOrderParams([ot], parameters=[p]))
 
     def featurize(self, struct, idx):
@@ -452,9 +452,7 @@ class CrystalNNFingerprint(BaseFeaturizer):
         cn_fingerprint = []
 
         if self.chem_info is not None:
-            prop_delta = {}  # dictionary of chemical property to final value
-            for prop in self.chem_props:
-                prop_delta[prop] = 0
+            prop_delta = {prop: 0 for prop in self.chem_props}
             sum_wt = 0
             elem_central = struct.sites[idx].specie.symbol
             specie_central = str(struct.sites[idx].specie)
@@ -497,16 +495,15 @@ class CrystalNNFingerprint(BaseFeaturizer):
                         opval = op.get_order_parameters(
                             [struct[idx]] + neigh_sites,
                             0,
-                            indices_neighs=[i for i in range(1, len(neigh_sites) + 1)],
+                            indices_neighs=list(range(1, len(neigh_sites) + 1)),
                         )[0]
+
                         opval = opval or 0  # handles None
                         cn_fingerprint.append(wt * opval)
         chem_fingerprint = []
 
         if self.chem_info is not None:
-            for val in prop_delta.values():
-                chem_fingerprint.append(val / sum_wt)
-
+            chem_fingerprint.extend(val / sum_wt for val in prop_delta.values())
         return cn_fingerprint + chem_fingerprint
 
     def feature_labels(self):

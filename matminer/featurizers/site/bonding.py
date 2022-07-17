@@ -81,10 +81,11 @@ class BondOrientationalParameter(BaseFeaturizer):
 
             # Compute the W, if desired
             if self.compute_W or self.compute_What:
-                w = 0
-                # Loop over all non-zero Wigner 3j coefficients
-                for (m1, m2, m3), wcoeff in get_wigner_coeffs(l):
-                    w += qlm[m1] * qlm[m2] * qlm[m3] * wcoeff
+                w = sum(
+                    qlm[m1] * qlm[m2] * qlm[m3] * wcoeff
+                    for (m1, m2, m3), wcoeff in get_wigner_coeffs(l)
+                )
+
                 Ws.append(w.real)
 
         # Compute Whats, if desired

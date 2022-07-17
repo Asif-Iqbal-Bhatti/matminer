@@ -196,14 +196,13 @@ class BaseFeaturizer(BaseEstimator, TransformerMixin, ABC):
 
         if return_frac:
             return np.sum(prechecks) / len(prechecks)
+        precheck_col = f"{self.__class__.__name__} precheck pass"
+        if inplace:
+            df[precheck_col] = prechecks
         else:
-            precheck_col = f"{self.__class__.__name__} precheck pass"
-            if inplace:
-                df[precheck_col] = prechecks
-            else:
-                res = pd.DataFrame({precheck_col: prechecks})
-                df = pd.concat([df, res], axis=1)
-            return df
+            res = pd.DataFrame({precheck_col: prechecks})
+            df = pd.concat([df, res], axis=1)
+        return df
 
     def precheck(self, *x) -> bool:
         """
@@ -379,21 +378,21 @@ class BaseFeaturizer(BaseEstimator, TransformerMixin, ABC):
             labels.append(self.__class__.__name__ + " Exceptions")
 
         ix_types = (pd.Index, list, tuple)
-        if multiindex and len(labels[0]) == 2 and isinstance(labels[0], ix_types):
-            # conversion featurizer, aiming to featurize in place.
-            # conversion featurizers only have one feature label.
-            # If return_errors=False, the transformation is:
-            # [('l1', 'l2')] -> [('l1', 'l2')] (i.e. unaltered).
-            # But if return_errors=True, the transformation is:
-            # [('l1', 'l2'), 'feat Exceptions'] ->
-            # [('l1', 'l2'), ('l1', 'feat Exceptions')]
-            tmp_labels = [label if isinstance(label, str) else label[1] for label in labels]
-            indices = ([labels[0][0]], tmp_labels)
+        if multiindex:
+            if len(labels[0]) == 2 and isinstance(labels[0], ix_types):
+                # conversion featurizer, aiming to featurize in place.
+                # conversion featurizers only have one feature label.
+                # If return_errors=False, the transformation is:
+                # [('l1', 'l2')] -> [('l1', 'l2')] (i.e. unaltered).
+                # But if return_errors=True, the transformation is:
+                # [('l1', 'l2'), 'feat Exceptions'] ->
+                # [('l1', 'l2'), ('l1', 'feat Exceptions')]
+                tmp_labels = [label if isinstance(label, str) else label[1] for label in labels]
+                indices = ([labels[0][0]], tmp_labels)
+            else:
+                indices = ([self.__class__.__name__], labels)
             labels = pd.MultiIndex.from_product(indices)
 
-        elif multiindex:
-            indices = ([self.__class__.__name__], labels)
-            labels = pd.MultiIndex.from_product(indices)
         return labels
 
     def featurize_many(self, entries, ignore_errors=False, return_errors=False, pbar=True):
@@ -440,35 +439,32 @@ class BaseFeaturizer(BaseEstimator, TransformerMixin, ABC):
             # list() required, tqdm has issues with memory if generator given
             entries = tqdm(list(entries), desc=self.__class__.__name__)
 
-        # Run the actual featurization
         if self.n_jobs == 1:
             return [
                 self.featurize_wrapper(x, ignore_errors=ignore_errors, return_errors=return_errors) for x in entries
             ]
-        else:
-            if sys.version_info[0] < 3:
-                warnings.warn(
-                    "Multiprocessing is not supported in "
-                    "matminer for Python 2.x. Multiprocessing has "
-                    "been disabled. Please upgrade to Python 3.x to "
-                    "enable multiprocessing."
-                )
+        if sys.version_info[0] < 3:
+            warnings.warn(
+                "Multiprocessing is not supported in "
+                "matminer for Python 2.x. Multiprocessing has "
+                "been disabled. Please upgrade to Python 3.x to "
+                "enable multiprocessing."
+            )
 
-                self.set_n_jobs(1)
-                return self.featurize_many(
-                    entries,
-                    ignore_errors=ignore_errors,
-                    return_errors=return_errors,
-                    pbar=pbar,
-                )
-            with Pool(self.n_jobs, maxtasksperchild=1) as p:
-                func = partial(
-                    self.featurize_wrapper,
-                    return_errors=return_errors,
-                    ignore_errors=ignore_errors,
-                )
-                res = p.map(func, entries, chunksize=self.chunksize)
-                return res
+            self.set_n_jobs(1)
+            return self.featurize_many(
+                entries,
+                ignore_errors=ignore_errors,
+                return_errors=return_errors,
+                pbar=pbar,
+            )
+        with Pool(self.n_jobs, maxtasksperchild=1) as p:
+            func = partial(
+                self.featurize_wrapper,
+                return_errors=return_errors,
+                ignore_errors=ignore_errors,
+            )
+            return p.map(func, entries, chunksize=self.chunksize)
 
     def featurize_wrapper(self, x, return_errors=False, ignore_errors=False):
         """
@@ -497,20 +493,19 @@ class BaseFeaturizer(BaseEstimator, TransformerMixin, ABC):
                 return self.featurize(*x)
         except BaseException as e:
             if ignore_errors:
-                if return_errors:
-                    features = [float("nan")] * len(self.feature_labels())
-                    error = traceback.format_exception(*sys.exc_info())
-                    return features + ["".join(error)]
-                else:
+                if not return_errors:
                     return [float("nan")] * len(self.feature_labels())
+                features = [float("nan")] * len(self.feature_labels())
+                error = traceback.format_exception(*sys.exc_info())
+                return features + ["".join(error)]
             else:
-                msg = str(e)
-                msg += (
-                    "\nTO SKIP THESE ERRORS when featurizing specific "
+                msg = (
+                    str(e) + "\nTO SKIP THESE ERRORS when featurizing specific "
                     "compounds, set 'ignore_errors=True' when running "
                     "the batch featurize() operation (e.g., "
                     "featurize_many(), featurize_dataframe(), etc.)."
                 )
+
                 raise type(e)(msg).with_traceback(sys.exc_info()[2])
 
     @abstractmethod
@@ -606,17 +601,16 @@ class MultipleFeaturizer(BaseFeaturizer):
                 return_errors=return_errors,
                 pbar=pbar,
             )
-        else:
-            features = [
-                f.featurize_many(
-                    entries,
-                    ignore_errors=ignore_errors,
-                    return_errors=return_errors,
-                    pbar=pbar,
-                )
-                for f in self.featurizers
-            ]
-            return [sum(x, []) for x in zip(*features)]
+        features = [
+            f.featurize_many(
+                entries,
+                ignore_errors=ignore_errors,
+                return_errors=return_errors,
+                pbar=pbar,
+            )
+            for f in self.featurizers
+        ]
+        return [sum(x, []) for x in zip(*features)]
 
     def featurize_wrapper(self, x, return_errors=False, ignore_errors=False):
         if self.iterate_over_entries:
@@ -689,21 +683,18 @@ class StackedFeaturizer(BaseFeaturizer):
         # TODO: Explore checking whether features have already been computed. Feature for MultiFeaturizer? -lw
         features = [self.featurizer.featurize(*x)]
 
-        # Run the model
-        if self._is_classifier():
-            output = self.model.predict_proba(features)[0]
-            return output[:-1]
-        else:
+        if not self._is_classifier():
             return [self.model.predict(features)]
+        output = self.model.predict_proba(features)[0]
+        return output[:-1]
 
     def feature_labels(self):
         name = self.name or ""
-        if self._is_classifier():
-            if self.class_names is None:
-                raise ValueError("Class names are required for classification models")
-            return [f"{name} P({cn})".lstrip() for cn in self.class_names[:-1]]
-        else:
+        if not self._is_classifier():
             return [f"{name} prediction".lstrip()]
+        if self.class_names is None:
+            raise ValueError("Class names are required for classification models")
+        return [f"{name} P({cn})".lstrip() for cn in self.class_names[:-1]]
 
     def implementors(self):
         return ["Logan Ward"]

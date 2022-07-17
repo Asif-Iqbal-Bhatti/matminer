@@ -96,11 +96,7 @@ def clean_projection(projection):
         smallest_deriv = derivs[0]
         buffer = ""
         for i in range(len(smallest_deriv)):
-            all_match = True
-            for deriv in derivs:
-                if deriv[i] != smallest_deriv[i]:
-                    all_match = False
-                    break
+            all_match = all(deriv[i] == smallest_deriv[i] for deriv in derivs)
             if all_match:
                 if smallest_deriv[i] == ".":
                     common += buffer

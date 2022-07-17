@@ -45,24 +45,22 @@ def load_dataset(name, data_home=None, download_if_missing=True, pbar=False):
         _dataset_dict = _load_dataset_dict()
 
     if name not in _dataset_dict:
-        error_string = (
-            "Unrecognized dataset name: {}. \n"
-            "Use matminer.datasets.get_available_datasets() "
-            "to see a list of currently available "
-            "datasets".format(name)
-        )
+        error_string = f"Unrecognized dataset name: {name}. \nUse matminer.datasets.get_available_datasets() to see a list of currently available datasets"
 
-        # Very simple attempt to match unrecognized keyword to existing
-        # dataset names in an attempt to give the user immediate feedback
-        possible_matches = [x for x in _dataset_dict.keys() if name.lower() in x.lower()]
 
-        if possible_matches:
-            error_string += "\nCould you have been looking for these similar " "matches?:\n{}".format(possible_matches)
+        if possible_matches := [
+            x for x in _dataset_dict.keys() if name.lower() in x.lower()
+        ]:
+            error_string += f"\nCould you have been looking for these similar matches?:\n{possible_matches}"
+
 
         raise ValueError(error_string)
 
     dataset_metadata = _dataset_dict[name]
-    data_path = os.path.join(_get_data_home(data_home), name + "." + dataset_metadata["file_type"])
+    data_path = os.path.join(
+        _get_data_home(data_home), f"{name}." + dataset_metadata["file_type"]
+    )
+
     _validate_dataset(
         data_path,
         dataset_metadata["url"],
@@ -70,9 +68,7 @@ def load_dataset(name, data_home=None, download_if_missing=True, pbar=False):
         download_if_missing,
     )
 
-    df = load_dataframe_from_json(data_path, pbar=pbar)
-
-    return df
+    return load_dataframe_from_json(data_path, pbar=pbar)
 
 
 def get_available_datasets(print_format="medium", sort_method="alphabetical"):
@@ -100,7 +96,10 @@ def get_available_datasets(print_format="medium", sort_method="alphabetical"):
         _dataset_dict = _load_dataset_dict()
 
     if sort_method not in {"alphabetical", "num_entries"}:
-        raise ValueError("Error, unsupported sorting metric {}" " see docs for options".format(sort_method))
+        raise ValueError(
+            f"Error, unsupported sorting metric {sort_method} see docs for options"
+        )
+
 
     if sort_method == "num_entries":
         dataset_names = sorted(
@@ -240,9 +239,10 @@ def get_all_dataset_info(dataset_name):
     """
     description = get_dataset_description(dataset_name)
     columns = get_dataset_columns(dataset_name)
-    column_descriptions = []
-    for c in columns:
-        column_descriptions.append(get_dataset_column_description(dataset_name, c))
+    column_descriptions = [
+        get_dataset_column_description(dataset_name, c) for c in columns
+    ]
+
     reference = get_dataset_reference(dataset_name)
     citations = get_dataset_citations(dataset_name)
     num_entries = get_dataset_num_entries(dataset_name)

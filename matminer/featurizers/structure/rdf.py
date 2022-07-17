@@ -75,8 +75,7 @@ class RadialDistributionFunction(BaseFeaturizer):
         # Normalize counts
         shell_vol = 4.0 / 3.0 * math.pi * (np.power(dist_bins[1:], 3) - np.power(dist_bins[:-1], 3))
         number_density = s.num_sites / s.volume
-        rdf = dist_hist / shell_vol / number_density
-        return rdf
+        return dist_hist / shell_vol / number_density
 
     def feature_labels(self):
         bin_labels = get_rdf_bin_labels(self.bin_distances, self.cutoff)
@@ -182,9 +181,10 @@ class PartialRadialDistributionFunction(BaseFeaturizer):
 
         # Convert the PRDF into a feature array
         zeros = np.zeros_like(dist_bins)  # Zeros if elements don't appear
-        output = []
-        for key in itertools.combinations_with_replacement(self.elements_, 2):
-            output.append(prdf.get(key, zeros))
+        output = [
+            prdf.get(key, zeros)
+            for key in itertools.combinations_with_replacement(self.elements_, 2)
+        ]
 
         # Stack them together
         return np.hstack(output)
@@ -253,8 +253,11 @@ class PartialRadialDistributionFunction(BaseFeaturizer):
         bin_edges = self._make_bins()
         labels = []
         for e1, e2 in itertools.combinations_with_replacement(self.elements_, 2):
-            for r_start, r_end in zip(bin_edges, bin_edges[1:]):
-                labels.append(f"{e1}-{e2} PRDF r={r_start:.2f}-{r_end:.2f}")
+            labels.extend(
+                f"{e1}-{e2} PRDF r={r_start:.2f}-{r_end:.2f}"
+                for r_start, r_end in zip(bin_edges, bin_edges[1:])
+            )
+
         return labels
 
     def citations(self):

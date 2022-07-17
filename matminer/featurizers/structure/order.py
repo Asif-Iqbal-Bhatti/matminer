@@ -29,7 +29,7 @@ class DensityFeatures(BaseFeaturizer):
             desired_features: [str] - choose from "density", "vpa",
                 "packing fraction"
         """
-        self.features = ["density", "vpa", "packing fraction"] if not desired_features else desired_features
+        self.features = desired_features or ["density", "vpa", "packing fraction"]
 
     def precheck(self, s: Structure) -> bool:
         """
@@ -60,9 +60,7 @@ class DensityFeatures(BaseFeaturizer):
         if "packing fraction" in self.features:
             if not s.is_ordered:
                 raise ValueError("Disordered structure support not built yet.")
-            total_rad = 0
-            for site in s:
-                total_rad += site.specie.atomic_radius**3
+            total_rad = sum(site.specie.atomic_radius**3 for site in s)
             output.append(4 * math.pi * total_rad / (3 * s.volume))
 
         return output

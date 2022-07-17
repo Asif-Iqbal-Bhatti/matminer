@@ -68,19 +68,17 @@ class Miedema(BaseFeaturizer):
     def __init__(self, struct_types="all", ss_types="min", data_source="Miedema"):
         if isinstance(struct_types, list):
             self.struct_types = struct_types
+        elif struct_types == "all":
+            self.struct_types = ["inter", "amor", "ss"]
         else:
-            if struct_types == "all":
-                self.struct_types = ["inter", "amor", "ss"]
-            else:
-                self.struct_types = [struct_types]
+            self.struct_types = [struct_types]
 
         if isinstance(ss_types, list):
             self.ss_types = ss_types
+        elif ss_types == "all":
+            self.ss_types = ["fcc", "bcc", "hcp", "no_latt"]
         else:
-            if ss_types == "all":
-                self.ss_types = ["fcc", "bcc", "hcp", "no_latt"]
-            else:
-                self.ss_types = [ss_types]
+            self.ss_types = [ss_types]
 
         self.data_source = data_source
         if self.data_source == "Miedema":
@@ -104,7 +102,7 @@ class Miedema(BaseFeaturizer):
         Returns:
             (bool): If True, s passed the precheck; otherwise, it failed.
         """
-        return all([e in self.element_list for e in c.element_composition.elements])
+        return all(e in self.element_list for e in c.element_composition.elements)
 
     def deltaH_chem(self, elements, fracs, struct):
         """
@@ -116,7 +114,7 @@ class Miedema(BaseFeaturizer):
         Returns:
             deltaH_chem (float): chemical term of formation enthalpy
         """
-        if any([el not in self.df_dataset.index for el in elements]):
+        if any(el not in self.df_dataset.index for el in elements):
             return np.nan
         df_el = self.df_dataset.loc[elements]
         v_molar = np.array(df_el["molar_volume"])
@@ -127,10 +125,10 @@ class Miedema(BaseFeaturizer):
         r = np.array(df_el["R_const"])
         h_trans = np.array(df_el["H_trans"])
 
-        if struct == "inter":
-            gamma = 8
-        elif struct == "amor":
+        if struct == "amor":
             gamma = 5
+        elif struct == "inter":
+            gamma = 8
         else:
             gamma = 0
 
@@ -167,8 +165,7 @@ class Miedema(BaseFeaturizer):
             / reduce(lambda x, y: 1 / x + 1 / y, np.power(n_ws, 1 / 3))
         )
 
-        deltaH_chem = f_a[0] * fracs[0] * v_a[0] * eta_ab + np.dot(fracs, h_trans)
-        return deltaH_chem
+        return f_a[0] * fracs[0] * v_a[0] * eta_ab + np.dot(fracs, h_trans)
 
     def deltaH_elast(self, elements, fracs):
         """
@@ -179,7 +176,7 @@ class Miedema(BaseFeaturizer):
         Returns:
             deltaH_elastic (float): elastic term of formation enthalpy
         """
-        if any([el not in self.df_dataset.index for el in elements]):
+        if any(el not in self.df_dataset.index for el in elements):
             return np.nan
         df_el = self.df_dataset.loc[elements]
         v_molar = np.array(df_el["molar_volume"])
@@ -220,8 +217,9 @@ class Miedema(BaseFeaturizer):
             4 * shear_mod[0] * vba_a[1] + 3 * compr[1] * vab_a[1]
         )
 
-        deltaH_elast = np.multiply.reduce(fracs, 0) * (fracs[1] * hab_elast + fracs[0] * hba_elast)
-        return deltaH_elast
+        return np.multiply.reduce(fracs, 0) * (
+            fracs[1] * hab_elast + fracs[0] * hba_elast
+        )
 
     def deltaH_struct(self, elements, fracs, latt):
         """
@@ -233,34 +231,13 @@ class Miedema(BaseFeaturizer):
         Returns:
             deltaH_struct (float): structural term of formation enthalpy
         """
-        if any([el not in self.df_dataset.index for el in elements]):
+        if any(el not in self.df_dataset.index for el in elements):
             return np.nan
         df_el = self.df_dataset.loc[elements]
         val = np.array(df_el["valence_electrons"])
         struct_stab = np.array(df_el["structural_stability"])
 
-        if latt == "fcc":
-            latt_stab_dict = {
-                0.0: 0.0,
-                1.0: 0,
-                2.0: 0,
-                3.0: -2,
-                4.0: -1.5,
-                5.0: 9.0,
-                5.5: 14.0,
-                6.0: 11.0,
-                7.0: -3.0,
-                8.0: -9.5,
-                8.5: -11.0,
-                9.0: -9.0,
-                10.0: -2.0,
-                11.0: 1.5,
-                12.0: 0.0,
-                13.0: 0.0,
-                14.0: 0.0,
-                15.0: 0.0,
-            }
-        elif latt == "bcc":
+        if latt == "bcc":
             latt_stab_dict = {
                 0.0: 0.0,
                 1.0: 0.0,
@@ -275,6 +252,27 @@ class Miedema(BaseFeaturizer):
                 8.5: 11.0,
                 9.0: 8.5,
                 10.0: 1.5,
+                11.0: 1.5,
+                12.0: 0.0,
+                13.0: 0.0,
+                14.0: 0.0,
+                15.0: 0.0,
+            }
+        elif latt == "fcc":
+            latt_stab_dict = {
+                0.0: 0.0,
+                1.0: 0,
+                2.0: 0,
+                3.0: -2,
+                4.0: -1.5,
+                5.0: 9.0,
+                5.5: 14.0,
+                6.0: 11.0,
+                7.0: -3.0,
+                8.0: -9.5,
+                8.5: -11.0,
+                9.0: -9.0,
+                10.0: -2.0,
                 11.0: 1.5,
                 12.0: 0.0,
                 13.0: 0.0,
@@ -319,8 +317,7 @@ class Miedema(BaseFeaturizer):
             val_bd_upper - val_avg
         ) * latt_stab_dict[val_bd_lower] / (val_bd_upper - val_bd_lower)
 
-        deltaH_struct = latt_stab - np.dot(fracs, struct_stab)
-        return deltaH_struct
+        return latt_stab - np.dot(fracs, struct_stab)
 
     def deltaH_topo(self, elements, fracs):
         """
@@ -331,13 +328,12 @@ class Miedema(BaseFeaturizer):
         Returns:
             deltaH_topo (float): topological term of formation enthalpy
         """
-        if any([el not in self.df_dataset.index for el in elements]):
+        if any(el not in self.df_dataset.index for el in elements):
             return np.nan
         df_el = self.df_dataset.loc[elements]
         melt_point = np.array(df_el["melting_point"])
 
-        deltaH_topo = 3.5 * np.dot(fracs, melt_point) / 1000
-        return deltaH_topo
+        return 3.5 * np.dot(fracs, melt_point) / 1000
 
     def featurize(self, comp):
         """
@@ -365,11 +361,12 @@ class Miedema(BaseFeaturizer):
         for struct_type in self.struct_types:
             # inter: intermetallic compound
             if struct_type == "inter":
-                deltaH_chem_inter = 0
-                for i_inter, el_bin in enumerate(el_bins):
-                    deltaH_chem_inter += self.deltaH_chem(el_bin, frac_bins[i_inter], "inter")
+                deltaH_chem_inter = sum(
+                    self.deltaH_chem(el_bin, frac_bins[i_inter], "inter")
+                    for i_inter, el_bin in enumerate(el_bins)
+                )
+
                 miedema.append(deltaH_chem_inter)
-            # ss: solid solution
             elif struct_type == "ss":
                 deltaH_chem_ss = 0
                 deltaH_elast_ss = 0
@@ -379,22 +376,25 @@ class Miedema(BaseFeaturizer):
 
                 for ss_type in self.ss_types:
                     if ss_type == "min":
-                        deltaH_ss_all = []
-                        for latt in ["fcc", "bcc", "hcp", "no_latt"]:
-                            deltaH_ss_all.append(
-                                deltaH_chem_ss + deltaH_elast_ss + self.deltaH_struct(elements, fracs, latt)
-                            )
+                        deltaH_ss_all = [
+                            deltaH_chem_ss
+                            + deltaH_elast_ss
+                            + self.deltaH_struct(elements, fracs, latt)
+                            for latt in ["fcc", "bcc", "hcp", "no_latt"]
+                        ]
+
                         deltaH_ss_min = min(deltaH_ss_all)
                         miedema.append(deltaH_ss_min)
                     else:
                         deltaH_struct_ss = self.deltaH_struct(elements, fracs, ss_type)
                         miedema.append(deltaH_chem_ss + deltaH_elast_ss + deltaH_struct_ss)
-            # amor: amorphous phase
             elif struct_type == "amor":
-                deltaH_chem_amor = 0
                 deltaH_topo_amor = self.deltaH_topo(elements, fracs)
-                for sub_bin, el_bin in enumerate(el_bins):
-                    deltaH_chem_amor += self.deltaH_chem(el_bin, frac_bins[sub_bin], "amor")
+                deltaH_chem_amor = sum(
+                    self.deltaH_chem(el_bin, frac_bins[sub_bin], "amor")
+                    for sub_bin, el_bin in enumerate(el_bins)
+                )
+
                 miedema.append(deltaH_chem_amor + deltaH_topo_amor)
 
         # convert kJ/mol to eV/atom. The original Miedema model is in kJ/mol.
@@ -405,8 +405,7 @@ class Miedema(BaseFeaturizer):
         labels = []
         for struct_type in self.struct_types:
             if struct_type == "ss":
-                for ss_type in self.ss_types:
-                    labels.append("Miedema_deltaH_ss_" + ss_type)
+                labels.extend("Miedema_deltaH_ss_" + ss_type for ss_type in self.ss_types)
             else:
                 labels.append("Miedema_deltaH_" + struct_type)
         return labels
@@ -486,7 +485,10 @@ class YangSolidSolution(BaseFeaturizer):
         Returns:
             (bool): If True, s passed the precheck; otherwise, it failed.
         """
-        return all([e in self.dhf_mix.valid_element_list for e in c.element_composition.elements])
+        return all(
+            e in self.dhf_mix.valid_element_list
+            for e in c.element_composition.elements
+        )
 
     def featurize(self, comp):
         return [self.compute_omega(comp), self.compute_delta(comp)]
@@ -765,10 +767,7 @@ class WenAlloys(BaseFeaturizer):
         Returns:
             float
         """
-        if yang_delta != 0:
-            return entropy / yang_delta**2
-        else:
-            return 0
+        return entropy / yang_delta**2 if yang_delta != 0 else 0
 
     @staticmethod
     def compute_gamma_radii(miracle_radius_stats):
@@ -822,11 +821,10 @@ class WenAlloys(BaseFeaturizer):
         Returns:
             (str)
         """
-        weight_fraction = ""
-        for single_element in elements:
-            weight_fraction += single_element + str(composition.get_wt_fraction(single_element))
-
-        return weight_fraction
+        return "".join(
+            single_element + str(composition.get_wt_fraction(single_element))
+            for single_element in elements
+        )
 
     @staticmethod
     def compute_atomic_fraction(elements, composition):
@@ -839,11 +837,10 @@ class WenAlloys(BaseFeaturizer):
         Returns:
             (str)
         """
-        atomic_fraction = ""
-        for single_element in elements:
-            atomic_fraction += single_element + str(composition.get_atomic_fraction(single_element))
-
-        return atomic_fraction
+        return "".join(
+            single_element + str(composition.get_atomic_fraction(single_element))
+            for single_element in elements
+        )
 
     @staticmethod
     def compute_strength_local_mismatch_shear(shear_modulus, mean_shear_modulus, fractions):

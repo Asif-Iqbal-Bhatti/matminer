@@ -42,7 +42,7 @@ class AbstractPairwise:
             (string) Label for the function
         """
         params = sorted(self.__dict__.items(), key=lambda x: x[0])
-        return "{} {}".format(self.__class__.__name__, " ".join(f"{k}={v}" for k, v in params))
+        return f'{self.__class__.__name__} {" ".join((f"{k}={v}" for k, v in params))}'
 
     def __call__(self, r_ij):
         """Compute the pairwise sum for a series of radii
